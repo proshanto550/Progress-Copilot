@@ -1,0 +1,18 @@
+/// <reference types="vite/client" />
+import axios from 'axios';
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000',
+  withCredentials: true, // accept httpOnly cookie + send it back
+  timeout: 10000,
+});
+
+export function getErrorMessage(err: any, fallback = 'Something went wrong') {
+  const data = err?.response?.data;
+  if (data?.error) return data.error as string;
+  if (data?.issues) {
+    const first = Object.entries(data.issues).find(([, v]) => Array.isArray(v) && (v as string[]).length);
+    if (first) return (first[1] as string[])[0];
+  }
+  return err?.message || fallback;
+}

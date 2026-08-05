@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ───────────────────── Theme tokens ─────────────────────
+ * Light is the default; `.dark` on <html> overrides for dark mode.
+ * This is what makes the global ThemeContext toggle change the
+ * app background, body color, and the .glass-nav / .dark-card /
+ * .resource-card helpers below.                                 */
+
+:root {
+  --bg: #f7f7fb;
+  --card: #ffffff;
+  --line: rgba(15, 23, 42, 0.10);
+  --purple: #8b5cf6;
+  --orange: #f97316;
+  --lime: #ccff00;
+  --text: #0f172a;
+}
+
+html.dark {
+  --bg: #08060d;
+  --card: #13101e;
+  --line: rgba(255, 255, 255, 0.08);
+  --text: #ffffff;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+::selection { background: rgba(168, 85, 247, 0.6); color: white; }
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+}
+html.dark .glass-nav {
+  background: rgba(18, 14, 28, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.dark-card {
+  background: linear-gradient(145deg, #151124 0%, #0d0a18 100%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+.dark-card:hover {
+  border-color: rgba(168, 85, 247, 0.35);
+  transform: translateY(-2px);
+}
+
+.resource-card {
+  background: linear-gradient(180deg, rgba(15, 12, 26, 0.92), rgba(8, 8, 14, 0.98));
+  border: 1px solid rgba(168, 85, 247, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 40px rgba(10, 8, 20, 0.45);
+}
+
+/* Floating mascot & badge keyframes — applied via .badge-float so they can't be
+   overridden by the static translate-x-* utilities on the wrapper. */
+@keyframes badgeFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -10px, 0); }
+}
+.badge-float {
+  animation: badgeFloat 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes mascotFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, -12px, 0) rotate(1deg); }
+}
+.mascot-float {
+  animation: mascotFloat 5s ease-in-out infinite;
+  will-change: transform;
+}
