@@ -6,6 +6,7 @@ import userRoutes from './modules/user/user.routes';
 import targetRoutes from './modules/targets/targets.routes';
 import taskRoutes from './modules/tasks/tasks.routes';
 import futureGoalRoutes from './modules/futureGoal/futureGoal.routes';
+import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import { errorHandler } from './middlewares/error';
 import { prisma } from './lib/prisma';
 
@@ -32,6 +33,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/targets', targetRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/future-goal', futureGoalRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use(errorHandler);
 

@@ -17,11 +17,12 @@ import type {
  */
 export function useTasks(filter?: { targetId?: string }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  // `loading` only flips true on the initial fetch. Silent reloads keep the
+  // UI mounted so a toggle doesn't flash the skeleton and lose state.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       const list = filter?.targetId

@@ -31,7 +31,9 @@ export async function create(req: Request, res: Response) {
   const id = userId(req);
   const data = createTargetSchema.parse(req.body);
   const target = await service.createTarget(id, data);
-  res.status(201).json({ target });
+  // Re-fetch with sub-tasks so the UI gets a fully-populated card in one go.
+  const fresh = await service.getTarget(id, target.id);
+  res.status(201).json({ target: fresh });
 }
 
 export async function update(req: Request, res: Response) {

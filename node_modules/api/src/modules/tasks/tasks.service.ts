@@ -75,25 +75,47 @@ async function ensureOwnTask(userId: string, taskId: string) {
 
 /* ─────────────────────────── CRUD ─────────────────────────── */
 
-export async function listTasks(userId: string, filter?: { targetId?: string }) {
+/**
+ * Shape returned by the list endpoints. We hydrate the parent target
+ * (id, title, deadline, status) so the Tasks page can show a badge /
+ * deadline without a second round-trip.
+ */
+function includeTarget() {
+  return {
+    target: {
+      select: { id: true, title: true, deadline: true, status: true },
+    },
+  };
+}
+
+export async function listTasks(userId: string, filter?: { targetId?: string }) 
+{
   return prisma.task.findMany({
     where: {
       userId,
       ...(filter?.targetId ? { targetId: filter.targetId } : {}),
     },
+    include: includeTarget(),
     orderBy: [{ isCompleted: 'asc' }, { createdAt: 'desc' }],
   });
 }
 
-export async function listTasksForTarget(userId: string, targetId: string) {
+export async function listTasksForTarget(userId: string, targetId: string) {    
   return prisma.task.findMany({
     where: { userId, targetId },
+    include: includeTarget(),
     orderBy: [{ isCompleted: 'asc' }, { createdAt: 'desc' }],
   });
 }
 
 export async function getTask(userId: string, taskId: string) {
-  return ensureOwnTask(userId, taskId);
+  const task = await ensureOwnTask(userId, taskId);
+  // ensureOwnTask already returned the target, so just re-query with the
+  // trimmed include shape so the response shape matches list endpoints.
+  return prisma.task.findUnique({
+    where: { id: taskId },
+    include: includeTarget(),
+  });
 }
 
 export async function createTask(userId: string, input: CreateTaskInput) {
@@ -119,15 +141,8 @@ export async function createTask(userId: string, input: CreateTaskInput) {
       priority,
       targetId: input.targetId ?? null,
     },
+    include: includeTarget(),
   });
-
-  // If this is a sub-task, adding it can flip the parent target out of
-  // COMPLETED (e.g. all sub-tasks were done and the user added one more).
-  // Recompute so the status stays consistent without waiting for a toggle.
-  if (task.targetId) {
-    await recomputeTargetStatus(task.targetId);
-  }
-
   return task;
 }
 
@@ -172,6 +187,7 @@ export async function updateTask(
   const updated = await prisma.task.update({
     where: { id: taskId },
     data,
+    include: includeTarget(),
   });
   return updated;
 }
@@ -303,7 +319,10 @@ export async function toggleTask(
     await recomputeTargetStatus(task.targetId);
   }
 
-  const fresh = await prisma.task.findUnique({ where: { id: taskId } });
+  const fresh = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: includeTarget(),
+  });
   if (!fresh) throw badRequest('Task vanished mid-toggle');
   return { task: fresh, pointsDelta, streakBumped };
 }

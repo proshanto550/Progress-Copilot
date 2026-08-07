@@ -53,6 +53,13 @@ export type Task = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Hydrated for sub-tasks so the Tasks page can show a parent badge. */
+  target?: {
+    id: string;
+    title: string;
+    deadline: string | null;
+    status: TargetStatus;
+  } | null;
 };
 
 /**
@@ -80,13 +87,103 @@ export type CreateTaskInput = {
 
 export type UpdateTaskInput = Partial<CreateTaskInput>;
 
+export type TargetSubTaskSeed = {
+  title: string;
+  deadline?: Date | string | null;
+};
+
 export type CreateTargetInput = {
   title: string;
   description?: string | null;
   deadline?: Date | string | null;
   priority?: Priority;
+  /** A target must be created with at least one sub-task. */
+  subTasks: TargetSubTaskSeed[];
 };
 
-export type UpdateTargetInput = Partial<CreateTargetInput> & {
+export type UpdateTargetInput = {
+  title?: string;
+  description?: string | null;
+  deadline?: Date | string | null;
+  priority?: Priority;
   status?: TargetStatus;
+};
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Phase 5 — Dashboard / My Progress payloads
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * A target with pre-computed sub-task progress. Returned by the dashboard
+ * and progress endpoints so the UI can render bars without N+1 queries.
+ */
+export type TargetWithProgress = Target & {
+  taskTotal: number;
+  doneTotal: number;
+  percent: number;
+};
+
+/** One cell of the 365-day contribution grid (or a 30/90-day slice). */
+export type ContributionCell = {
+  /** YYYY-MM-DD in UTC. */
+  date: string;
+  count: number;
+};
+
+export type ReminderLite = {
+  id: string;
+  userId: string;
+  targetId: string | null;
+  taskId: string | null;
+  time: string;
+  isSent: boolean;
+  createdAt: string;
+  updatedAt: string;
+  target?: { id: string; title: string } | null;
+  task?: { id: string; title: string } | null;
+};
+
+export type DashboardProjects = {
+  githubConnected: boolean;
+  repoCount: number;
+};
+
+/** Payload of GET /api/dashboard. */
+export type DashboardData = {
+  user: {
+    id: string;
+    fullName: string;
+    avatar: string | null;
+    points: number;
+    dailyStreak: number;
+    createdAt: string;
+    productivityScore: number;
+  };
+  topTargets: TargetWithProgress[];
+  pendingTasks: Task[];
+  upcomingReminders: ReminderLite[];
+  projects: DashboardProjects;
+  contributionGrid: {
+    days: number;
+    cells: ContributionCell[];
+  };
+};
+
+/** Payload of GET /api/progress. */
+export type ProgressData = {
+  user: {
+    id: string;
+    fullName: string;
+    avatar: string | null;
+    points: number;
+    dailyStreak: number;
+    productivityScore: number;
+  };
+  targetBreakdown: TargetWithProgress[];
+  tasksCompletedLast30Days: ContributionCell[];
+  pointsDistribution: {
+    high: number;
+    medium: number;
+    low: number;
+  };
 };

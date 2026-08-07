@@ -16,11 +16,14 @@ import type {
  */
 export function useTargets() {
   const [targets, setTargets] = useState<Target[]>([]);
+  // `loading` only reflects the very first fetch — subsequent `reload()`
+  // calls (e.g. after a sub-task toggle) update silently so the grid
+  // doesn't momentarily collapse to a skeleton and unmount the card
+  // the user is interacting with.
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setLoading(true);
     setError(null);
     try {
       const list = await targetsApi.list();

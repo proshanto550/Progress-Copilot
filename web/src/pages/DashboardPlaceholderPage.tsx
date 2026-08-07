@@ -1,37 +1,18 @@
 import { DashboardPlaceholder } from '../components/layout/DashboardPlaceholder';
+import { MyProgressScreen } from './MyProgressScreen';
 
-export function MyProgressPage() {
-  return (
-    <DashboardPlaceholder
-      title="My Progress"
-      subtitle="Track your targets, tasks, courses, and habits in one place."
-    />
-  );
-}
+/**
+ * DashboardPlaceholderPage — the public re-export module for every
+ * "to be filled in later" route. Phase 5 swaps `MyProgressPage` for
+ * the real screen; the rest remain placeholders until their phase.
+ */
+export { MyProgressScreen as MyProgressPage };
 
 export function AIAssistantPage() {
   return (
     <DashboardPlaceholder
       title="AI Assistant"
       subtitle="Converse with your data — questions, summaries, next steps."
-    />
-  );
-}
-
-export function TargetsPage() {
-  return (
-    <DashboardPlaceholder
-      title="Targets"
-      subtitle="Long-term goals with measurable targets."
-    />
-  );
-}
-
-export function TasksPage() {
-  return (
-    <DashboardPlaceholder
-      title="Tasks"
-      subtitle="Daily and weekly tasks tied to your targets."
     />
   );
 }

@@ -38,6 +38,29 @@ body {
 
 ::selection { background: rgba(168, 85, 247, 0.6); color: white; }
 
+/* ───────────────────── Form controls ─────────────────────
+ * Native <select> dropdowns inherit the OS styling for their
+ * <option> menu. That OS menu defaults to a white background with
+ * black text — invisible labels in the dark theme. We force the
+ * dropdown menu (and the visible closed-state chrome) to use our
+ * theme tokens so HIGH / MEDIUM / LOW / ALL read correctly.       */
+select,
+select option,
+select optgroup {
+  background-color: var(--card);
+  color: var(--text);
+}
+html.dark select,
+html.dark select option,
+html.dark select optgroup {
+  background-color: #1b1530;
+  color: #ffffff;
+}
+html.dark select option:checked {
+  background-color: #2a1f4a linear-gradient(0deg, #2a1f4a 0%, #2a1f4a 100%);
+  color: #ffffff;
+}
+
 .glass-nav {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(16px);

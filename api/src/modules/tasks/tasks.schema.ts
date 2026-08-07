@@ -22,10 +22,14 @@ const isoDate = z
   .transform((v) => new Date(v));
 
 const isoDateOptional = z
-  .string()
-  .trim()
+  .union([z.string(), z.null()])
   .optional()
-  .transform((v) => (v && v.length ? new Date(v) : null))
+  .transform((v) => {
+    if (v === null || v === undefined) return null;
+    if (typeof v !== 'string' || v.length === 0) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  })
   .refine((v) => v === null || !Number.isNaN(v.getTime()), 'Invalid date');
 
 export const createTaskSchema = z.object({

@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../modules/tasks/useTasks';
 import { getErrorMessage } from '../lib/api';
@@ -10,18 +11,25 @@ import type { Priority, Task } from '../lib/types';
  *
  * - Each column is a vertical stack of task cards.
  * - Checkbox toggles `isCompleted`. Backend auto-awards / refunds points
- *   (HIGH=5, MEDIUM=4, LOW=3, standalone=2) and bumps the daily streak.
+ *   (HIGH=5, MEDIUM=4, LOW=3 for sub-tasks; flat for standalone) and
+ *   bumps the daily streak.
  * - The AuthContext is refreshed after every toggle so the TopNavbar's
  *   points / streak chips stay in sync.
  * - "Add Task" form at the top creates standalone tasks (no target).
+ * - Create errors are surfaced at the page level via `createError` so the
+ *   message survives the AddTaskForm unmounting on success.
  */
 
 export function TasksPage() {
   const { refresh } = useAuth();
   const { tasks, loading, error, reload, toggle, remove, create } = useTasks();
+  const navigate = useNavigate();
 
   const [showAdd, setShowAdd] = useState(false);
   const [filterPriority, setFilterPriority] = useState<'ALL' | Priority>('ALL');
+  // Page-level banner for create errors so the message survives the
+  // AddTaskForm unmounting on success.
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const { todo, done } = useMemo(() => {
     const sorted = [...tasks].sort(
@@ -38,20 +46,24 @@ export function TasksPage() {
 
   const handleToggle = async (task: Task) => {
     try {
-      const result = await toggle(task.id, !task.isCompleted);
+      await toggle(task.id, !task.isCompleted);
       // Sync the navbar with the new points / streak.
       await refresh();
-      // Sub-tasks: also refresh targets so the auto-complete status flips.
-      if (task.targetId) {
-        // targets list isn't owned here — the user can navigate to /targets
-        // to see the badge update. We could trigger a global event here, but
-        // the lightweight version is good enough.
-        void result;
-      }
     } catch (err) {
       // Surface inline; the TasksPage already shows per-row errors when needed.
       console.error('toggle failed:', err);
     }
+  };
+
+  const handleDelete = async (task: Task) => {
+    await remove(task.id);
+    await refresh();
+  };
+
+  // Clicking a sub-task's parent badge navigates to the Targets page so the
+  // user can open the matching card's "View Progress" inline.
+  const handleOpenTarget = (targetId: string) => {
+    navigate('/dashboard/targets', { state: { focusTargetId: targetId } });
   };
 
   return (
@@ -97,16 +109,40 @@ export function TasksPage() {
             className="overflow-hidden"
           >
             <AddTaskForm
-              onCancel={() => setShowAdd(false)}
-              onCreate={async (data) => {
-                await create(data);
+              onCancel={() => {
                 setShowAdd(false);
-                await refresh();
+                setCreateError(null);
+              }}
+              onCreate={async (data) => {
+                try {
+                  await create(data);
+                  setCreateError(null);
+                  setShowAdd(false);
+                  await refresh();
+                } catch (err) {
+                  // Surface the error at the page level so the message is
+                  // visible even after the form unmounts.
+                  setCreateError(getErrorMessage(err, 'Failed to create task'));
+                  throw err;
+                }
               }}
             />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {createError && (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center justify-between gap-3">
+          <p className="text-sm text-rose-200">{createError}</p>
+          <button
+            type="button"
+            onClick={() => setCreateError(null)}
+            className="h-9 px-3 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-white text-sm font-semibold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center justify-between gap-3">
@@ -139,10 +175,8 @@ export function TasksPage() {
                 key={t.id}
                 task={t}
                 onToggle={() => handleToggle(t)}
-                onDelete={async () => {
-                  await remove(t.id);
-                  await refresh();
-                }}
+                onDelete={() => handleDelete(t)}
+                onOpenTarget={handleOpenTarget}
               />
             ))}
           </TaskColumn>
@@ -158,10 +192,8 @@ export function TasksPage() {
                 key={t.id}
                 task={t}
                 onToggle={() => handleToggle(t)}
-                onDelete={async () => {
-                  await remove(t.id);
-                  await refresh();
-                }}
+                onDelete={() => handleDelete(t)}
+                onOpenTarget={handleOpenTarget}
               />
             ))}
           </TaskColumn>
@@ -239,13 +271,19 @@ function TaskCard({
   task,
   onToggle,
   onDelete,
+  onOpenTarget,
 }: {
   task: Task;
   onToggle: () => void;
   onDelete: () => void;
+  onOpenTarget: (targetId: string) => void;
 }) {
   const isDone = task.isCompleted;
   const overdue = !isDone && isOverdue(task.deadline);
+  const hasParentTarget = !!task.targetId && !!task.target;
+  // If this is a sub-task without an own deadline, fall back to the parent's
+  // deadline so the user can still see when the work is due.
+  const effectiveDeadline = task.deadline ?? (hasParentTarget ? task.target!.deadline ?? undefined : undefined);
 
   return (
     <li
@@ -283,14 +321,27 @@ function TaskCard({
             >
               {task.title}
             </p>
-            <button
-              type="button"
-              onClick={onDelete}
-              aria-label="Delete task"
-              className="opacity-0 group-hover:opacity-100 h-7 w-7 inline-flex items-center justify-center rounded text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
-            >
-              <TrashIcon />
-            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {hasParentTarget && task.target && (
+                <button
+                  type="button"
+                  onClick={() => onOpenTarget(task.target!.id)}
+                  title={`Open "${task.target!.title}" progress`}
+                  className="inline-flex items-center gap-1 h-6 max-w-[140px] px-2 rounded-full text-[10px] font-bold uppercase tracking-wide bg-fuchsia-500/15 text-fuchsia-200 ring-1 ring-fuchsia-400/30 hover:bg-fuchsia-500/25 hover:ring-fuchsia-400/60 transition-all"
+                >
+                  <TargetIcon />
+                  <span className="truncate">{task.target!.title}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onDelete}
+                aria-label="Delete task"
+                className="opacity-0 group-hover:opacity-100 h-7 w-7 inline-flex items-center justify-center rounded text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+              >
+                <TrashIcon />
+              </button>
+            </div>
           </div>
 
           {task.description && (
@@ -306,7 +357,7 @@ function TaskCard({
 
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
             <PriorityPill priority={task.priority} />
-            {task.deadline && (
+            {effectiveDeadline && (
               <span
                 className={
                   'inline-flex items-center gap-1 h-5 px-2 rounded-full ring-1 ' +
@@ -314,10 +365,16 @@ function TaskCard({
                     ? 'bg-rose-500/15 text-rose-300 ring-rose-400/30'
                     : 'bg-white/5 text-gray-300 ring-white/10')
                 }
+                title={
+                  !task.deadline && hasParentTarget
+                    ? `Inherited from target "${task.target!.title}"`
+                    : undefined
+                }
               >
                 <CalendarIcon />
-                {formatDate(task.deadline)}
+                {formatDate(effectiveDeadline)}
                 {overdue && ' · overdue'}
+                {!task.deadline && hasParentTarget && ' · from target'}
               </span>
             )}
             <span className="inline-flex items-center h-5 px-2 rounded-full bg-purple-500/10 text-purple-200 ring-1 ring-purple-400/20">
@@ -393,9 +450,9 @@ function AddTaskForm({
             onChange={(e) => setPriority(e.target.value as Priority)}
             className={inputCls}
           >
-            <option value="MEDIUM">MEDIUM (4 pts)</option>
-            <option value="HIGH">HIGH (5 pts)</option>
-            <option value="LOW">LOW (3 pts)</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+            <option value="LOW">LOW</option>
           </select>
         </Field>
         <Field label="Deadline">
@@ -419,7 +476,7 @@ function AddTaskForm({
       </div>
 
       <p className="text-[11px] text-gray-400">
-        Tasks not attached to a Target earn <span className="text-purple-300 font-bold">+2 pts</span> regardless of priority.
+        Standalone tasks earn <span className="text-purple-300 font-bold">2 points</span> regardless of priority.
       </p>
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
@@ -555,6 +612,15 @@ function CheckIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-3 w-3">
       <path d="m5 12 5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
     </svg>
   );
 }

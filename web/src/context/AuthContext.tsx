@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react';
 import { api } from '../lib/api';
 import type { User } from '../lib/types';
 
@@ -37,32 +37,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { data } = await api.post('/api/auth/login', { email, password });
     setUser(data.user);
     setToken(data.token);
     return data.user as User;
-  };
+  }, []);
 
-  const signup = async (fullName: string, email: string, password: string, confirmPassword: string) => {
-    const { data } = await api.post('/api/auth/signup', { fullName, email, password, confirmPassword });
-    setUser(data.user);
-    setToken(data.token);
-    return data.user as User;
-  };
+  const signup = useCallback(
+    async (fullName: string, email: string, password: string, confirmPassword: string) => {
+      const { data } = await api.post('/api/auth/signup', {
+        fullName,
+        email,
+        password,
+        confirmPassword,
+      });
+      setUser(data.user);
+      setToken(data.token);
+      return data.user as User;
+    },
+    [],
+  );
 
-  const logout = async () => {
-    try { await api.post('/api/auth/logout'); } catch {}
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch {
+      /* ignore */
+    }
     setUser(null);
     setToken(null);
-  };
+  }, []);
 
   /**
    * Re-fetch the canonical /me payload. Used after actions that mutate
    * server-side counters (points, dailyStreak, theme, …) so the
    * TopNavbar chips stay in sync without a full page reload.
    */
-  const refresh = async (): Promise<User | null> => {
+  const refresh = useCallback(async (): Promise<User | null> => {
     try {
       const { data } = await api.get('/api/user/me');
       if (data?.user) {
@@ -73,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       return null;
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, signup, logout, refresh }}>

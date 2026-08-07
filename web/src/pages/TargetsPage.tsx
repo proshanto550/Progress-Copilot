@@ -1,11 +1,12 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useFutureGoal } from '../modules/futureGoal/useFutureGoal';
 import { useTargets } from '../modules/targets/useTargets';
 import { tasksApi } from '../modules/tasks/tasksApi';
 import { getErrorMessage } from '../lib/api';
-import type { Priority, Target, Task } from '../lib/types';
+import type { Priority, Target, Task, TargetSubTaskSeed } from '../lib/types';
 
 /**
  * TargetsPage — Future Goal + Target list with sub-task progress.
@@ -28,9 +29,33 @@ import type { Priority, Target, Task } from '../lib/types';
 export function TargetsPage() {
   const { refresh } = useAuth();
   const { goal, save: saveGoal, loading: goalLoading } = useFutureGoal();
-  const { targets, loading, error, reload, create, remove } = useTargets();
+  const { targets, loading, error, reload, create, remove, update } = useTargets();
+  const location = useLocation();
 
   const [showAdd, setShowAdd] = useState(false);
+
+  // If the Tasks page sent us here with a focusTargetId (via router state),
+  // we pre-expand that card so the user lands on View Progress directly.
+  const focusTargetId = (location.state as { focusTargetId?: string } | null)?.focusTargetId;
+
+  // Stable callback so child cards don't re-render on every TargetsPage render.
+  // Updates only the affected card's status — no full grid reload, so the
+  // expanded card stays mounted and the user's input is preserved.
+  const handleProgressChanged = useCallback(
+    async (targetId: string, nextStatus: 'INCOMPLETE' | 'COMPLETED') => {
+      await update(targetId, { status: nextStatus });
+      refresh();
+    },
+    [update, refresh],
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await remove(id);
+      refresh();
+    },
+    [remove, refresh],
+  );
 
   return (
     <div className="space-y-6">
@@ -92,14 +117,9 @@ export function TargetsPage() {
               <TargetCard
                 key={t.id}
                 target={t}
-                onDelete={async () => {
-                  await remove(t.id);
-                  refresh();
-                }}
-                onProgressChanged={async () => {
-                  await reload();
-                  refresh();
-                }}
+                onDelete={() => handleDelete(t.id)}
+                onProgressChanged={handleProgressChanged}
+                forceExpand={t.id === focusTargetId}
               />
             ))}
           </div>
@@ -228,31 +248,65 @@ function FutureGoalCard({
 
 /* ─────────────────────────── Add Target ─────────────────────────── */
 
+type SubTaskDraft = { title: string; deadline: string };
+
 function AddTargetForm({
   onCancel,
   onCreate,
 }: {
   onCancel: () => void;
-  onCreate: (data: { title: string; description?: string; deadline?: Date | null; priority?: Priority }) => Promise<void>;
+  onCreate: (data: {
+    title: string;
+    description?: string | null;
+    deadline?: Date | null;
+    priority?: Priority;
+    subTasks: TargetSubTaskSeed[];
+  }) => Promise<void>;
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
+  // Always start with at least one sub-task row so the form can't submit
+  // empty — the backend also enforces a min of 1.
+  const [subTasks, setSubTasks] = useState<SubTaskDraft[]>([{ title: '', deadline: '' }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const setSubTask = (idx: number, patch: Partial<SubTaskDraft>) =>
+    setSubTasks((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+
+  const addSubTaskRow = () =>
+    setSubTasks((prev) => [...prev, { title: '', deadline: '' }]);
+
+  const removeSubTaskRow = (idx: number) =>
+    setSubTasks((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev,
+    );
+
+  const validSubTasks = subTasks.filter((s) => s.title.trim().length > 0);
+  const canSubmit =
+    title.trim().length > 0 && validSubTasks.length > 0 && validSubTasks.length === subTasks.length;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+    if (validSubTasks.length === 0) {
+      setError('Add at least one sub-task to create this target');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await onCreate({
         title: title.trim(),
-        description: description.trim() || undefined,
+        description: description.trim() || null,
         deadline: deadline ? new Date(deadline) : null,
         priority,
+        subTasks: validSubTasks.map((s) => ({
+          title: s.title.trim(),
+          deadline: s.deadline ? new Date(s.deadline) : null,
+        })),
       });
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to create target'));
@@ -273,7 +327,7 @@ function AddTargetForm({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Pass AWS SAA in 6 weeks"
+            placeholder="e.g. Learn React and build a portfolio site"
             maxLength={200}
             className={inputCls}
           />
@@ -309,6 +363,71 @@ function AddTargetForm({
         </Field>
       </div>
 
+      {/* ─── Sub-task section (minimum 1 row) ─── */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              Sub-tasks
+            </span>
+            <span className="text-[10px] text-rose-300 font-semibold">
+              * at least 1 required
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={addSubTaskRow}
+            className="inline-flex items-center gap-1 h-8 px-3 rounded-full bg-purple-600/20 hover:bg-purple-600/30 text-purple-200 text-xs font-semibold border border-purple-400/30 transition-colors"
+          >
+            <PlusIcon />
+            Add row
+          </button>
+        </div>
+
+        <ul className="space-y-2">
+          {subTasks.map((s, idx) => {
+            const empty = s.title.trim().length === 0;
+            return (
+              <li
+                key={idx}
+                className={
+                  'rounded-lg border p-2 flex flex-col sm:flex-row sm:items-center gap-2 ' +
+                  (empty
+                    ? 'border-rose-500/40 bg-rose-500/5'
+                    : 'border-white/10 bg-white/5')
+                }
+              >
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={s.title}
+                    onChange={(e) => setSubTask(idx, { title: e.target.value })}
+                    placeholder={`Sub-task #${idx + 1} — e.g. Watch Module 1 lectures`}
+                    maxLength={200}
+                    className="h-9 w-full px-3 rounded-md bg-white/5 border border-white/10 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                  />
+                </div>
+                <input
+                  type="date"
+                  value={s.deadline}
+                  onChange={(e) => setSubTask(idx, { deadline: e.target.value })}
+                  className="h-9 px-3 rounded-md bg-white/5 border border-white/10 text-gray-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/50 sm:w-44"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeSubTaskRow(idx)}
+                  disabled={subTasks.length === 1}
+                  aria-label="Remove sub-task row"
+                  className="h-9 w-9 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 border border-white/10 disabled:opacity-30 disabled:hover:text-gray-400 disabled:hover:bg-transparent transition-colors"
+                >
+                  <TrashIcon />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
       <div className="flex justify-end gap-2">
@@ -321,7 +440,7 @@ function AddTargetForm({
         </button>
         <button
           type="submit"
-          disabled={saving || !title.trim()}
+          disabled={saving || !canSubmit}
           className="h-10 px-4 rounded-lg bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white font-semibold disabled:opacity-50"
         >
           {saving ? 'Creating…' : 'Create Target'}
@@ -337,33 +456,58 @@ function TargetCard({
   target,
   onDelete,
   onProgressChanged,
+  forceExpand,
 }: {
   target: Target;
-  onDelete: () => Promise<void>;
-  onProgressChanged: () => Promise<void>;
+  onDelete: () => Promise<void> | void;
+  onProgressChanged: (targetId: string, nextStatus: 'INCOMPLETE' | 'COMPLETED') => Promise<void>;
+  forceExpand?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  // Honor the parent-driven initial expansion (e.g. when we navigated from
+  // the Tasks page and want View Progress open immediately). After the first
+  // mount the user controls `expanded` themselves.
+  const [expanded, setExpanded] = useState<boolean>(!!forceExpand);
   const [subTasks, setSubTasks] = useState<Task[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const fetchSubTasks = async () => {
+  // Stable ref so the [expanded] effect doesn't loop on every render.
+  // We deliberately do NOT depend on `onProgressChanged` or `target.status`
+  // here — both change whenever a sibling re-renders, which would otherwise
+  // re-fire `fetchSubTasks` in an infinite loop. We compare the derived
+  // status against the latest prop value via refs so the comparison stays
+  // current without pulling them into our deps.
+  const onProgressChangedRef = useRef(onProgressChanged);
+  const targetStatusRef = useRef(target.status);
+  onProgressChangedRef.current = onProgressChanged;
+  targetStatusRef.current = target.status;
+
+  const fetchSubTasks = useCallback(async () => {
     setLoadingTasks(true);
     try {
       const list = await tasksApi.listByTarget(target.id);
       setSubTasks(list);
+      // After a fresh load, let the parent recompute the target status so
+      // the COMPLETED / INCOMPLETE pill flips without waiting for a toggle.
+      const allDone = list.length > 0 && list.every((t) => t.isCompleted);
+      const nextStatus: 'INCOMPLETE' | 'COMPLETED' = allDone ? 'COMPLETED' : 'INCOMPLETE';
+      // Only ping the parent when the derived status actually differs from
+      // what's currently displayed — avoids a pointless PATCH / re-render
+      // (and the infinite-spinner that used to come with it).
+      if (nextStatus !== targetStatusRef.current) {
+        onProgressChangedRef.current(target.id, nextStatus);
+      }
     } catch {
       setSubTasks([]);
     } finally {
       setLoadingTasks(false);
     }
-  };
+  }, [target.id]);
 
   useEffect(() => {
     if (expanded) fetchSubTasks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+  }, [expanded, fetchSubTasks]);
 
   const { completed, total, percent } = useMemo(() => {
     const t = subTasks.length;
@@ -386,7 +530,8 @@ function TargetCard({
       });
       setSubTasks((prev) => [created, ...prev]);
       setNewTitle('');
-      onProgressChanged();
+      // No onProgressChanged here — adding a sub-task can't complete the
+      // target, so the card's pill stays INCOMPLETE without a round-trip.
     } catch {
       /* surfaced by tasksApi.create consumer */
     } finally {
@@ -398,7 +543,6 @@ function TargetCard({
     try {
       await tasksApi.toggle(task.id, !task.isCompleted);
       await fetchSubTasks();
-      onProgressChanged();
     } catch {
       /* noop */
     }
@@ -408,7 +552,6 @@ function TargetCard({
     try {
       await tasksApi.remove(id);
       await fetchSubTasks();
-      onProgressChanged();
     } catch {
       /* noop */
     }
