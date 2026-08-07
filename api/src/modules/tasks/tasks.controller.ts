@@ -1,4 +1,5 @@
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler';
 import * as service from './tasks.service';
 import {
   createTaskSchema,
@@ -19,48 +20,48 @@ function userId(req: Request): string {
   return id;
 }
 
-export async function list(req: Request, res: Response) {
+export const list = asyncHandler(async (req, res) => {
   const id = userId(req);
   const targetId = typeof req.query.targetId === 'string' ? req.query.targetId : undefined;
   const tasks = await service.listTasks(id, targetId ? { targetId } : undefined);
   res.json({ tasks });
-}
+});
 
-export async function listByTarget(req: Request, res: Response) {
+export const listByTarget = asyncHandler(async (req, res) => {
   const id = userId(req);
   const tasks = await service.listTasksForTarget(id, req.params.targetId);
   res.json({ tasks });
-}
+});
 
-export async function getOne(req: Request, res: Response) {
+export const getOne = asyncHandler(async (req, res) => {
   const id = userId(req);
   const task = await service.getTask(id, req.params.id);
   res.json({ task });
-}
+});
 
-export async function create(req: Request, res: Response) {
+export const create = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = createTaskSchema.parse(req.body);
   const task = await service.createTask(id, data);
   res.status(201).json({ task });
-}
+});
 
-export async function update(req: Request, res: Response) {
+export const update = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = updateTaskSchema.parse(req.body);
   const task = await service.updateTask(id, req.params.id, data);
   res.json({ task });
-}
+});
 
-export async function toggle(req: Request, res: Response) {
+export const toggle = asyncHandler(async (req, res) => {
   const id = userId(req);
   const { isCompleted } = toggleTaskSchema.parse(req.body);
   const result = await service.toggleTask(id, req.params.id, { isCompleted });
   res.json(result);
-}
+});
 
-export async function remove(req: Request, res: Response) {
+export const remove = asyncHandler(async (req, res) => {
   const id = userId(req);
   const out = await service.deleteTask(id, req.params.id);
   res.json(out);
-}
+});

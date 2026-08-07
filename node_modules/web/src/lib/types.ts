@@ -187,3 +187,39 @@ export type ProgressData = {
     low: number;
   };
 };
+export type ChatSender = 'USER' | 'AI';
+
+/** Lightweight chat row for the sidebar list. */
+export type ChatSummary = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+};
+
+/** A single message inside a chat. */
+export type ChatMessage = {
+  id: string;
+  sender: ChatSender;
+  content: string;
+  createdAt: string;
+};
+
+/** Body of POST /api/ai/chat. */
+export type SendMessageArgs = {
+  chatId?: string | null;
+  content: string;
+};
+
+/** Response of POST /api/ai/chat. */
+export type SendMessageResponse = {
+  chatId: string;
+  userMessage: ChatMessage;
+  assistantMessage: ChatMessage;
+};
+
+/** Body of PATCH /api/ai/chats/:id (rename). */
+export type RenameChatArgs = {
+  title: string;
+};

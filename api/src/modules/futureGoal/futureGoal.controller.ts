@@ -1,4 +1,5 @@
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler';
 import * as service from './futureGoal.service';
 import { futureGoalSchema } from './futureGoal.schema';
 
@@ -12,15 +13,15 @@ function userId(req: Request): string {
   return id;
 }
 
-export async function get(req: Request, res: Response) {
+export const get = asyncHandler(async (req, res) => {
   const id = userId(req);
   const goal = await service.getFutureGoal(id);
   res.json({ goal });
-}
+});
 
-export async function put(req: Request, res: Response) {
+export const put = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = futureGoalSchema.parse(req.body);
   const goal = await service.upsertFutureGoal(id, data);
   res.json({ goal });
-}
+});

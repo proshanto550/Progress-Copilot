@@ -6,7 +6,7 @@
 
 - **web/** — React (Vite) + TypeScript + Tailwind + Framer Motion + React Router + React Query + Axios + Recharts
 - **api/** — Node + Express + TypeScript + Prisma + PostgreSQL + JWT + Bcrypt + Zod
-- AI: Grok (added in later phases)
+- AI: Google Gemini (Edith assistant, added in later phases)
 
 ## Quick start
 

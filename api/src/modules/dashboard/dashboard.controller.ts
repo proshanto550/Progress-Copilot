@@ -1,4 +1,5 @@
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler';
 import * as service from './dashboard.service';
 
 function userId(req: Request): string {
@@ -16,19 +17,19 @@ function userId(req: Request): string {
  * Returns user, productivityScore, top 4 targets, 4 pending tasks,
  * 4 upcoming reminders, projects stub, and a 365-day contribution grid.
  */
-export async function dashboard(req: Request, res: Response) {
+export const dashboard = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = await service.getDashboard(id);
   res.json(data);
-}
+});
 
 /**
  * GET /api/progress — payloads for the /dashboard/my-progress screen.
  * Returns user, productivityScore, all-target breakdown, 30-day trend,
  * HIGH/MED/LOW points distribution.
  */
-export async function progress(req: Request, res: Response) {
+export const progress = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = await service.getProgress(id);
   res.json(data);
-}
+});

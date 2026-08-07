@@ -71,18 +71,61 @@ export function PointsDistributionChart({
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{
-                background: 'rgba(15, 7, 30, 0.95)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 8,
-                fontSize: 12,
-                color: 'white',
+              cursor={{ fill: 'rgba(255,255,255,0.06)' }}
+              content={({ active, payload }) => {
+                if (!active || !payload || payload.length === 0) return null;
+                const p = payload[0];
+                const label =
+                  (p.payload as { label?: string } | undefined)?.label ??
+                  (p.name as string) ??
+                  '';
+                const value = (p.value as number) ?? 0;
+                const color =
+                  (p.payload as { color?: string } | undefined)?.color ?? '#fff';
+                return (
+                  <div
+                    style={{
+                      background: 'rgba(15, 7, 30, 0.96)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      fontSize: 12,
+                      boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: '#f3f4f6',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 9,
+                          height: 9,
+                          borderRadius: 9999,
+                          background: color,
+                          display: 'inline-block',
+                        }}
+                      />
+                      {label}
+                    </div>
+                    <div
+                      style={{
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        marginTop: 4,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {value} pts
+                    </div>
+                  </div>
+                );
               }}
-              formatter={(value: number, _name, item) => [
-                `${value} pts`,
-                (item as unknown as { payload?: { label?: string } })?.payload?.label ??
-                  '',
-              ]}
             />
           </PieChart>
         </ResponsiveContainer>

@@ -17,6 +17,8 @@ export async function authRequired(req: Request, _res: Response, next: NextFunct
       select: {
         id: true, fullName: true, email: true, avatar: true, theme: true,
         points: true, dailyStreak: true, createdAt: true,
+        hometown: true, university: true, degree: true, yearSemester: true,
+        hobbies: true, interests: true, aiBio: true,
       },
     });
     if (!user) throw unauthorized('User not found');

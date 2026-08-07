@@ -4,7 +4,10 @@ import axios from 'axios';
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000',
   withCredentials: true, // accept httpOnly cookie + send it back
-  timeout: 10000,
+  // 60s covers the slowest case (a Gemini reply can take 10–20s, plus the
+  // backend round-trip + DB writes). Fast endpoints resolve in <1s so
+  // a generous ceiling doesn't hurt UX.
+  timeout: 60000,
 });
 
 export function getErrorMessage(err: any, fallback = 'Something went wrong') {

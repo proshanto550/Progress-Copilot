@@ -1,4 +1,5 @@
-import type { Request, Response } from 'express';
+import type { Request } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler';
 import * as service from './targets.service';
 import {
   createTargetSchema,
@@ -15,36 +16,36 @@ function userId(req: Request): string {
   return id;
 }
 
-export async function list(req: Request, res: Response) {
+export const list = asyncHandler(async (req, res) => {
   const id = userId(req);
   const targets = await service.listTargets(id);
   res.json({ targets });
-}
+});
 
-export async function getOne(req: Request, res: Response) {
+export const getOne = asyncHandler(async (req, res) => {
   const id = userId(req);
   const target = await service.getTarget(id, req.params.id);
   res.json({ target });
-}
+});
 
-export async function create(req: Request, res: Response) {
+export const create = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = createTargetSchema.parse(req.body);
   const target = await service.createTarget(id, data);
   // Re-fetch with sub-tasks so the UI gets a fully-populated card in one go.
   const fresh = await service.getTarget(id, target.id);
   res.status(201).json({ target: fresh });
-}
+});
 
-export async function update(req: Request, res: Response) {
+export const update = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = updateTargetSchema.parse(req.body);
   const target = await service.updateTarget(id, req.params.id, data);
   res.json({ target });
-}
+});
 
-export async function remove(req: Request, res: Response) {
+export const remove = asyncHandler(async (req, res) => {
   const id = userId(req);
   const out = await service.deleteTarget(id, req.params.id);
   res.json(out);
-}
+});

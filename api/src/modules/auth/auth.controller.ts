@@ -1,28 +1,28 @@
-import type { Request, Response } from 'express';
+import { asyncHandler } from '../../lib/asyncHandler';
 import * as service from './auth.service';
 import { signupSchema, loginSchema } from './auth.schema';
 import { cookieOptions } from '../../lib/jwt';
 
-export async function signup(req: Request, res: Response) {
+export const signup = asyncHandler(async (req, res) => {
   const data = signupSchema.parse(req.body);
   const { token, user } = await service.signup(data);
   res.cookie('token', token, cookieOptions);
   res.status(201).json({ token, user });
-}
+});
 
-export async function login(req: Request, res: Response) {
+export const login = asyncHandler(async (req, res) => {
   const data = loginSchema.parse(req.body);
   const { token, user } = await service.login(data);
   res.cookie('token', token, cookieOptions);
   res.json({ token, user });
-}
+});
 
-export async function me(req: Request, res: Response) {
+export const me = asyncHandler(async (_req, res) => {
   // populated by auth middleware
-  res.json({ user: (req as any).user });
-}
+  res.json({ user: (_req as any).user });
+});
 
-export async function logout(_req: Request, res: Response) {
+export const logout = asyncHandler(async (_req, res) => {
   res.clearCookie('token', { path: '/' });
   res.json({ ok: true });
-}
+});

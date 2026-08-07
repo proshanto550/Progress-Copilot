@@ -197,7 +197,7 @@ function About() {
     { icon: 'fa-solid fa-fire', title: 'Daily momentum', desc: 'Streaks and points keep you moving each day.' },
     { icon: 'fa-solid fa-shield-halved', title: 'Yours & private', desc: 'Encrypted at rest. Strict tenant isolation.' },
     { icon: 'fa-solid fa-feather', title: 'Lightweight', desc: 'Minimal UI. Focused on the work that matters.' },
-    { icon: 'fa-solid fa-bolt', title: 'Powered by AI', desc: 'Grok under the hood — plans, summaries, more.' },
+    { icon: 'fa-solid fa-bolt', title: 'Powered by AI', desc: 'Edith on Gemini — plans, summaries, more.' },
   ];
 
   return (
