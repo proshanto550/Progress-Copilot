@@ -1,6 +1,7 @@
 import { DashboardPlaceholder } from '../components/layout/DashboardPlaceholder';
 import { MyProgressScreen } from './MyProgressScreen';
 import { AIAssistantPage as RealAIAssistantPage } from './AIAssistantPage';
+import { default as RealProfilePage } from './ProfilePage';
 
 /**
  * DashboardPlaceholderPage — the public re-export module for every
@@ -9,6 +10,7 @@ import { AIAssistantPage as RealAIAssistantPage } from './AIAssistantPage';
  */
 export { MyProgressScreen as MyProgressPage };
 export { RealAIAssistantPage as AIAssistantPage };
+export { RealProfilePage as ProfilePage };
 
 export function RemindersPage() {
   return (
@@ -73,11 +75,4 @@ export function SettingsPage() {
   );
 }
 
-export function ProfilePage() {
-  return (
-    <DashboardPlaceholder
-      title="Your Profile"
-      subtitle="Edit your name, avatar, and preferences."
-    />
-  );
-}
+// ProfilePage re-exported above from ./ProfilePage.

@@ -49,6 +49,23 @@ model User {
   role                 String?
   experience           String?
   education            String?
+  // Personalization profile (added by 20260807211257_add_user_profile_for_edith)
+  hometown             String?
+  university           String?
+  degree               String?
+  yearSemester         String?
+  hobbies              String?
+  interests            String?
+  aiBio                String?
+  // ─── Phase 7 — Structured profile fields ─────────────────────────────────
+  // Keep single-value scalars on User (so /api/profile can SELECT them in one
+  // round-trip). Multi-row sections (Address / Education / Skill) live in
+  // their own models below.
+  mobileNumber         String?
+  ageRange             String?       // "20-25", "26-30", ...
+  primaryDeviceType    String?       // "Laptop", "Mobile", "Tablet", "Desktop"
+  employmentRole       String?       // "Student", "Freelancer", "Employee", ...
+  areaType             String?       // "Urban", "Town", "Rural"
   points               Int           @default(0)
   dailyStreak          Int           @default(0)
   lastTaskCompleteDate DateTime?
@@ -63,8 +80,79 @@ model User {
   courses      Course[]
   reminders    Reminder[]
   chats        ChatHistory[]
+  addresses    Address[]
+  educations   Education[]
+  skills       Skill[]
 
   @@index([email])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 7 — Structured profile sub-records (1 user → N rows)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AddressKind {
+  PRESENT
+  PERMANENT
+}
+
+/// One row per address section. We keep BOTH "present" and "permanent"
+/// on the SAME row so the UI can render them in one SELECT. The
+/// `sameAsPresent` flag lets the permanent section collapse when the
+/// user opts in.
+model Address {
+  id            String      @id @default(cuid())
+  userId        String
+  kind          AddressKind
+  country       String?
+  district      String?
+  streetAddress String?
+  /// For PERMANENT rows only — when true the UI copies values from the
+  /// PRESENT row at render time instead of using these columns.
+  sameAsPresent Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@index([userId])
+}
+
+/// Education history — most users only have ONE active row but the model
+/// allows multiple (e.g. HSC + Bachelor). The "currently studying"
+/// checkbox is the truth source the UI uses to highlight the active row.
+model Education {
+  id                  String   @id @default(cuid())
+  userId              String
+  educationLevel      String?  // "SSC", "HSC", "Bachelor/Honors", "Masters", "PhD"
+  examDegreeTitle     String?  // free text — "Computer Science and Engineering"
+  institutionName     String?
+  isCurrentlyStudying Boolean  @default(false)
+  passingYear         Int?     // approximate passing year e.g. 2027
+  currentYear         String?  // "1st Year", "2nd Year", "3rd Year", "4th Year"
+  isCseStudent        Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A single skill in the user's skill set. Multiple rows per user.
+model Skill {
+  id               String   @id @default(cuid())
+  userId           String
+  skillName        String
+  experienceInYear String?  // "1", "2", "3+" — free string so UI can use dropdown
+  projectLinks     String?  // newline-separated list of URLs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './modules/auth/auth.routes';
 import userRoutes from './modules/user/user.routes';
+import profileV2Routes from './modules/user/profile.v2.routes';
 import targetRoutes from './modules/targets/targets.routes';
 import taskRoutes from './modules/tasks/tasks.routes';
 import futureGoalRoutes from './modules/futureGoal/futureGoal.routes';
@@ -31,6 +32,7 @@ app.get('/health', async (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api/user', profileV2Routes);
 app.use('/api/targets', targetRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/future-goal', futureGoalRoutes);

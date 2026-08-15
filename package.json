@@ -12,5 +12,8 @@
     "dev": "npm run dev:api & npm run dev:web",
     "build:api": "npm --workspace api run build",
     "build:web": "npm --workspace web run build"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.9.1"
   }
 }
