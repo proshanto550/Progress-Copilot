@@ -3,25 +3,25 @@
 @tailwind utilities;
 
 /* ───────────────────── Theme tokens ─────────────────────
- * Light is the default; `.dark` on <html> overrides for dark mode.
- * This is what makes the global ThemeContext toggle change the
- * app background, body color, and the .glass-nav / .dark-card /
- * .resource-card helpers below.                                 */
+ * Light mode uses Canva-inspired soft violet/indigo/sky-blue
+ * gradients, white cards with subtle glowing shadows, and slate-900 text.
+ * Dark mode uses deep dark slate/purple gradients (#110b24).
+ */
 
 :root {
-  --bg: #f7f7fb;
+  --bg: #f2f4fb;
   --card: #ffffff;
-  --line: rgba(15, 23, 42, 0.10);
+  --line: rgba(124, 58, 237, 0.15);
   --purple: #8b5cf6;
   --orange: #f97316;
-  --lime: #ccff00;
+  --lime: #84cc16;
   --text: #0f172a;
 }
 
 html.dark {
-  --bg: #08060d;
-  --card: #13101e;
-  --line: rgba(255, 255, 255, 0.08);
+  --bg: #110b24;
+  --card: #181132;
+  --line: rgba(255, 255, 255, 0.1);
   --text: #ffffff;
 }
 
@@ -29,21 +29,28 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(224, 231, 255, 0.8) 0px, transparent 55%),
+    radial-gradient(at 90% 20%, rgba(243, 232, 255, 0.8) 0px, transparent 55%),
+    radial-gradient(at 50% 90%, rgba(224, 242, 254, 0.75) 0px, transparent 60%);
+  background-attachment: fixed;
   color: var(--text);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   transition: background-color 300ms ease, color 300ms ease;
 }
 
+html.dark body {
+  background-color: #110b24;
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(45, 27, 85, 0.6) 0px, transparent 60%),
+    radial-gradient(at 90% 20%, rgba(35, 18, 70, 0.6) 0px, transparent 60%),
+    radial-gradient(at 50% 90%, rgba(18, 30, 65, 0.5) 0px, transparent 60%);
+}
+
 ::selection { background: rgba(168, 85, 247, 0.6); color: white; }
 
-/* ───────────────────── Form controls ─────────────────────
- * Native <select> dropdowns inherit the OS styling for their
- * <option> menu. That OS menu defaults to a white background with
- * black text — invisible labels in the dark theme. We force the
- * dropdown menu (and the visible closed-state chrome) to use our
- * theme tokens so HIGH / MEDIUM / LOW / ALL read correctly.       */
 select,
 select option,
 select optgroup {
@@ -62,36 +69,34 @@ html.dark select option:checked {
 }
 
 .glass-nav {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(248, 250, 252, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.15);
   color: #0f172a;
 }
 html.dark .glass-nav {
-  background: rgba(18, 14, 28, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(19, 13, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
 }
 
 .dark-card {
-  background: linear-gradient(145deg, #151124 0%, #0d0a18 100%);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(145deg, #181132 0%, #100a24 100%);
+  border: 1px solid rgba(168, 85, 247, 0.2);
   transition: all 0.3s ease;
 }
 .dark-card:hover {
-  border-color: rgba(168, 85, 247, 0.35);
+  border-color: rgba(168, 85, 247, 0.4);
   transform: translateY(-2px);
 }
 
 .resource-card {
-  background: linear-gradient(180deg, rgba(15, 12, 26, 0.92), rgba(8, 8, 14, 0.98));
-  border: 1px solid rgba(168, 85, 247, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 20px 40px rgba(10, 8, 20, 0.45);
+  background: linear-gradient(180deg, rgba(22, 15, 42, 0.95), rgba(12, 8, 24, 0.98));
+  border: 1px solid rgba(168, 85, 247, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 20px 40px rgba(10, 8, 20, 0.45);
 }
 
-/* Floating mascot & badge keyframes — applied via .badge-float so they can't be
-   overridden by the static translate-x-* utilities on the wrapper. */
 @keyframes badgeFloat {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50%      { transform: translate3d(0, -10px, 0); }

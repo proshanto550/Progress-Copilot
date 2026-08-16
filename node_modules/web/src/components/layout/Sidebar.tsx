@@ -60,8 +60,8 @@ export function Sidebar({
     <aside
       className={
         'fixed inset-y-0 left-0 z-30 hidden md:flex md:flex-col ' +
-        'border-r border-white/10 dark:border-white/10 ' +
-        'bg-white/70 dark:bg-[#0b0717]/80 backdrop-blur-2xl ' +
+        'border-r border-purple-200/80 dark:border-white/10 ' +
+        'bg-gradient-to-b from-slate-50/95 via-indigo-50/90 to-purple-50/80 dark:from-[#0e091f]/95 dark:via-[#0b0717]/95 dark:to-[#080512]/95 backdrop-blur-xl ' +
         'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ' +
         (collapsed ? 'w-[78px]' : 'w-64')
       }
@@ -70,7 +70,7 @@ export function Sidebar({
       {/* ───────── Brand + collapse ───────── */}
       <div
         className={
-          'flex items-center h-16 shrink-0 border-b border-black/10 dark:border-white/10 ' +
+          'flex items-center h-16 shrink-0 border-b border-purple-200/70 dark:border-white/10 ' +
           (collapsed ? 'justify-center px-2' : 'justify-between px-4')
         }
       >
@@ -89,10 +89,10 @@ export function Sidebar({
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
-              <span className="font-extrabold text-sm text-gray-900 dark:text-white flex items-center gap-1">
+              <span className="font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-1">
                 Progress <span className="text-purple-600 dark:text-purple-300">Copilot</span>
               </span>
-              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-gray-700 dark:text-gray-400 mt-0.5">
+              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-slate-600 dark:text-gray-400 mt-0.5">
                 Smarter Progress
               </span>
             </div>
@@ -104,7 +104,7 @@ export function Sidebar({
             type="button"
             onClick={() => onCollapsedChange(true)}
             aria-label="Collapse sidebar"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-purple-500/10 dark:hover:bg-white/5 transition-colors"
           >
             <ChevronLeftIcon />
           </button>
@@ -117,14 +117,14 @@ export function Sidebar({
           type="button"
           onClick={() => onCollapsedChange(false)}
           aria-label="Expand sidebar"
-          className="absolute -right-3 top-6 z-10 h-7 w-7 rounded-full border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#0b0717] text-gray-500 dark:text-gray-400 hover:text-white hover:bg-purple-600 transition-colors flex items-center justify-center shadow-md"
+          className="absolute -right-3 top-6 z-10 h-7 w-7 rounded-full border border-purple-200 dark:border-white/10 bg-slate-50 dark:bg-[#0b0717] text-slate-700 dark:text-gray-400 hover:text-white hover:bg-purple-600 transition-colors flex items-center justify-center shadow-md"
         >
           <ChevronRightIcon />
         </button>
       )}
 
       {/* ───────── Nav groups ───────── */}
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4">
         <NavGroup items={GROUP_A_ITEMS} collapsed={collapsed} />
         <Divider />
         <NavGroup items={GROUP_B_ITEMS} collapsed={collapsed} />
@@ -133,7 +133,7 @@ export function Sidebar({
       </nav>
 
       {/* ───────── Settings pinned at bottom ───────── */}
-      <div className="border-t border-black/10 dark:border-white/10 px-2 py-3">
+      <div className="border-t border-purple-200/70 dark:border-white/10 px-2.5 py-3">
         <SidebarLink
           item={{ ...SETTINGS_ITEM, icon: <GearIcon /> }}
           collapsed={collapsed}
@@ -158,7 +158,7 @@ function NavGroup({ items, collapsed }: { items: Item[]; collapsed: boolean }) {
 }
 
 function Divider() {
-  return <hr className="my-3 border-black/10 dark:border-white/10" />;
+  return <hr className="my-3 border-purple-200/70 dark:border-white/10" />;
 }
 
 function SidebarLink({ item, collapsed }: { item: Item; collapsed: boolean }) {
@@ -169,17 +169,17 @@ function SidebarLink({ item, collapsed }: { item: Item; collapsed: boolean }) {
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         [
-          'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+          'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all',
           isActive
-            ? 'bg-gradient-to-r from-purple-600/20 to-fuchsia-500/10 text-purple-800 dark:text-white border border-purple-500/50 shadow-[0_0_0_1px_rgba(168,85,247,0.2)]'
-            : 'text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 border border-transparent font-semibold',
+            ? 'bg-gradient-to-r from-purple-600/20 via-purple-500/15 to-fuchsia-500/10 text-purple-900 dark:text-white border-l-4 border-fuchsia-500 shadow-sm font-bold'
+            : 'text-slate-700 dark:text-gray-300 hover:text-purple-900 dark:hover:text-white hover:bg-purple-500/10 dark:hover:bg-white/5 border border-transparent',
           collapsed ? 'justify-center px-0' : '',
         ].join(' ')
       }
     >
       <span
         aria-hidden
-        className="inline-flex h-5 w-5 shrink-0 items-center justify-center"
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform"
       >
         {item.icon}
       </span>

@@ -41,6 +41,7 @@ const trimNullable = z
 const profileSection = z.object({
   fullName: z.string().min(1).max(80).optional(),
   email: z.string().email().optional(), // read-only on update but echoed on GET
+  avatar: z.string().min(1).max(3_000_000).nullable().optional(),
   mobileNumber: phoneSchema,
   whatsapp: phoneSchema,
 });

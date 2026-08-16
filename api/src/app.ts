@@ -9,6 +9,11 @@ import taskRoutes from './modules/tasks/tasks.routes';
 import futureGoalRoutes from './modules/futureGoal/futureGoal.routes';
 import dashboardRoutes from './modules/dashboard/dashboard.routes';
 import aiRoutes from './modules/ai/ai.routes';
+import notesRoutes from './modules/notes/notes.routes';
+import coursesRoutes from './modules/courses/courses.routes';
+import projectsRoutes from './modules/projects/projects.routes';
+import remindersRoutes from './modules/reminders/reminders.routes';
+import reportsRoutes from './modules/reports/reports.routes';
 import { errorHandler } from './middlewares/error';
 import { prisma } from './lib/prisma';
 
@@ -18,7 +23,7 @@ app.use(cors({
   origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   credentials: true,
 }));
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
 app.get('/health', async (_req, res) => {
@@ -38,6 +43,11 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/future-goal', futureGoalRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/courses', coursesRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/reminders', remindersRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.use(errorHandler);
 

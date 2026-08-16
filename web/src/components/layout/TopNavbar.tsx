@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { useRef, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { titleForPath } from './navItems';
 import { ProfileDropdown } from './ProfileDropdown';
@@ -28,9 +29,9 @@ export function TopNavbar() {
   return (
     <header
       className={
-        'sticky top-0 z-20 h-16 border-b border-black/10 dark:border-white/10 ' +
-        'bg-white/70 dark:bg-[#0b0717]/70 backdrop-blur-xl ' +
-        'text-gray-900 dark:text-white ' +
+        'sticky top-0 z-20 h-16 border-b border-purple-200/80 dark:border-white/10 ' +
+        'bg-slate-50/85 dark:bg-[#0b0717]/85 backdrop-blur-xl ' +
+        'text-slate-900 dark:text-white ' +
         'flex items-center justify-between gap-4 px-4 sm:px-6 ' +
         'transition-colors duration-300'
       }
@@ -91,12 +92,14 @@ export function TopNavbar() {
           )}
         </button>
 
-        {profileOpen && (
-          <ProfileDropdown
-            onClose={() => setProfileOpen(false)}
-            ignoreRef={avatarBtnRef}
-          />
-        )}
+        <AnimatePresence>
+          {profileOpen && (
+            <ProfileDropdown
+              onClose={() => setProfileOpen(false)}
+              ignoreRef={avatarBtnRef}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );

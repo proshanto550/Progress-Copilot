@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { ProfileDropdown } from './ProfileDropdown';
 
@@ -187,12 +188,14 @@ function AuthAwareActions({ isAuthed }: { isAuthed: boolean }) {
         )}
       </button>
 
-      {profileOpen && (
-        <ProfileDropdown
-          onClose={() => setProfileOpen(false)}
-          ignoreRef={avatarBtnRef}
-        />
-      )}
+        <AnimatePresence>
+          {profileOpen && (
+            <ProfileDropdown
+              onClose={() => setProfileOpen(false)}
+              ignoreRef={avatarBtnRef}
+            />
+          )}
+        </AnimatePresence>
     </div>
   );
 }

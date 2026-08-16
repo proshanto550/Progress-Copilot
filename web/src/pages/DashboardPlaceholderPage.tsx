@@ -2,6 +2,8 @@ import { DashboardPlaceholder } from '../components/layout/DashboardPlaceholder'
 import { MyProgressScreen } from './MyProgressScreen';
 import { AIAssistantPage as RealAIAssistantPage } from './AIAssistantPage';
 import { default as RealProfilePage } from './ProfilePage';
+import { NotesPage as RealNotesPage } from './NotesPage';
+import { CoursesPage as RealCoursesPage } from './CoursesPage';
 
 /**
  * DashboardPlaceholderPage — the public re-export module for every
@@ -11,30 +13,14 @@ import { default as RealProfilePage } from './ProfilePage';
 export { MyProgressScreen as MyProgressPage };
 export { RealAIAssistantPage as AIAssistantPage };
 export { RealProfilePage as ProfilePage };
+export { RealNotesPage as NotesPage };
+export { RealCoursesPage as CoursesPage };
 
 export function RemindersPage() {
   return (
     <DashboardPlaceholder
       title="Reminders"
       subtitle="Smart reminders and gentle nudges."
-    />
-  );
-}
-
-export function NotesPage() {
-  return (
-    <DashboardPlaceholder
-      title="Notes"
-      subtitle="Quick capture and long-form notes."
-    />
-  );
-}
-
-export function CoursesPage() {
-  return (
-    <DashboardPlaceholder
-      title="Courses"
-      subtitle="Learning tracks and progress."
     />
   );
 }
@@ -74,5 +60,3 @@ export function SettingsPage() {
     />
   );
 }
-
-// ProfilePage re-exported above from ./ProfilePage.
