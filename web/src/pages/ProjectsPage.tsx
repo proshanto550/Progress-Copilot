@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Github,
   ExternalLink,
   Star,
   GitFork,
@@ -16,6 +15,24 @@ import {
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { ContributionGrid } from '../components/dashboard/ContributionGrid';
+
+function GithubIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+      />
+    </svg>
+  );
+}
 
 export function ProjectsPage() {
   const queryClient = useQueryClient();
@@ -58,7 +75,7 @@ export function ProjectsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 sm:p-6 shadow-md dark:shadow-glow-purple">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <Github className="text-purple-600 dark:text-fuchsia-400" size={26} /> GitHub Projects
+            <GithubIcon className="text-purple-600 dark:text-fuchsia-400" size={26} /> GitHub Projects
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-violet-300/80 mt-1">
             Connect your GitHub profile to showcase repositories and activity.
@@ -70,7 +87,7 @@ export function ProjectsPage() {
           onClick={() => setConnectModalOpen(true)}
           className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-sky-600 text-white text-sm font-bold tracking-wide shadow-md hover:brightness-110 active:scale-[0.98] transition inline-flex items-center gap-2 self-start sm:self-auto shrink-0"
         >
-          <Github size={18} /> {data?.connected ? 'Change GitHub Handle' : 'Connect GitHub'}
+          <GithubIcon size={18} /> {data?.connected ? 'Change GitHub Handle' : 'Connect GitHub'}
         </button>
       </div>
 
@@ -95,7 +112,7 @@ export function ProjectsPage() {
       {/* Not Connected State */}
       {!isLoading && !data?.connected && (
         <div className="rounded-2xl border border-dashed border-purple-300 dark:border-purple-500/30 p-12 text-center bg-slate-50/50 dark:bg-cardBg/40">
-          <Github className="mx-auto text-purple-400 dark:text-purple-400/50 mb-3" size={48} />
+          <GithubIcon className="mx-auto text-purple-400 dark:text-purple-400/50 mb-3" size={48} />
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">Connect Your GitHub Account</h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-violet-300/70 mt-1 max-w-sm mx-auto">
             Link your username to automatically import public repositories and display your 365-day contribution calendar.
@@ -224,7 +241,7 @@ export function ProjectsPage() {
             >
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-purple-200/60 dark:border-cardBorder/40">
                 <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Github className="text-purple-600 dark:text-fuchsia-400" size={20} />
+                  <GithubIcon className="text-purple-600 dark:text-fuchsia-400" size={20} />
                   Connect GitHub Account
                 </h2>
                 <button

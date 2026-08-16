@@ -1,15 +1,18 @@
 import { useLocation } from 'react-router-dom';
 import { useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { titleForPath } from './navItems';
 import { ProfileDropdown } from './ProfileDropdown';
+import { NotificationDropdown } from './NotificationDropdown';
+import { api } from '../../lib/api';
 
 /**
  * TopNavbar — header bar for the private layout.
  *
  * Left: dynamic page title (derived from the active sidebar route).
- * Right: daily-streak chip, points chip, notifications bell,
+ * Right: daily-streak chip, points chip, notifications bell with dropdown,
  *        rounded avatar that opens the ProfileDropdown.
  */
 export function TopNavbar() {
@@ -18,8 +21,19 @@ export function TopNavbar() {
   const title = titleForPath(location.pathname);
 
   const [profileOpen, setProfileOpen] = useState(false);
-  const [bellPulse] = useState(true); // visual: dot stays on once
+  const [notifOpen, setNotifOpen] = useState(false);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
+  const notifBtnRef = useRef<HTMLButtonElement>(null);
+
+  const { data: remindersData } = useQuery({
+    queryKey: ['reminders'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/reminders');
+      return data.reminders || [];
+    },
+  });
+
+  const remindersCount = remindersData?.length ?? 0;
 
   const streak = user?.dailyStreak ?? 0;
   const points = user?.points ?? 0;
@@ -58,22 +72,43 @@ export function TopNavbar() {
           label="points"
         />
 
+        {/* Notifications Bell */}
         <button
+          ref={notifBtnRef}
           type="button"
+          onClick={() => {
+            setNotifOpen((v) => !v);
+            setProfileOpen(false);
+          }}
           aria-label="Notifications"
           className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
         >
           <BellIcon />
-          {bellPulse && (
-            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-[#0b0717]" />
+          {remindersCount > 0 && (
+            <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-white dark:ring-[#0b0717]" />
+            </span>
           )}
         </button>
 
-        {/* Avatar trigger — clicking it again toggles the dropdown closed. */}
+        <AnimatePresence>
+          {notifOpen && (
+            <NotificationDropdown
+              onClose={() => setNotifOpen(false)}
+              ignoreRef={notifBtnRef}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Avatar trigger */}
         <button
           ref={avatarBtnRef}
           type="button"
-          onClick={() => setProfileOpen((v) => !v)}
+          onClick={() => {
+            setProfileOpen((v) => !v);
+            setNotifOpen(false);
+          }}
           aria-haspopup="menu"
           aria-expanded={profileOpen}
           aria-label="Open profile menu"

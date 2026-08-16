@@ -20,6 +20,7 @@ import { TargetsPage } from './pages/TargetsPage';
 import { TasksPage } from './pages/TasksPage';
 import { useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 
 export default function App() {
   // Pull the server-stored theme (if any) so the initial render matches
@@ -30,7 +31,8 @@ export default function App() {
 
   return (
     <ThemeProvider serverTheme={serverTheme}>
-      <Routes>
+      <ToastProvider>
+        <Routes>
         {/* ───── Public ───── */}
         {/* Landing page renders for BOTH guests and logged-in users so the
             auth-aware header (Login/Get Demo for guests, Avatar + Actionable
@@ -71,7 +73,8 @@ export default function App() {
             <Route path="/dashboard/profile" element={<ProfilePage />} />
           </Route>
         </Route>
-      </Routes>
+        </Routes>
+      </ToastProvider>
     </ThemeProvider>
   );
 }
