@@ -29,26 +29,54 @@ function playReminderSound() {
     const gain1 = ctx.createGain();
     osc1.type = 'sine';
     osc1.frequency.setValueAtTime(659.25, now);
-    gain1.gain.setValueAtTime(0.35, now);
+    gain1.gain.setValueAtTime(0.4, now);
     gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
     osc1.connect(gain1);
     gain1.connect(ctx.destination);
     osc1.start(now);
     osc1.stop(now + 0.6);
 
-    // Tone 2: G5 (783.99 Hz) shortly after
+    // Tone 2: G5 (783.99 Hz)
     const osc2 = ctx.createOscillator();
     const gain2 = ctx.createGain();
     osc2.type = 'sine';
     osc2.frequency.setValueAtTime(783.99, now + 0.15);
-    gain2.gain.setValueAtTime(0.45, now + 0.15);
+    gain2.gain.setValueAtTime(0.5, now + 0.15);
     gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
     osc2.connect(gain2);
     gain2.connect(ctx.destination);
     osc2.start(now + 0.15);
     osc2.stop(now + 0.85);
   } catch {
-    // Suppress audio context restrictions if blocked
+    // Suppress audio context restrictions
+  }
+}
+
+/** Show Native OS/Browser Desktop Notification (works across any tab or background) */
+function triggerBrowserNotification(title: string, body: string) {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+        tag: 'reminder-alert',
+        requireInteraction: true,
+      });
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification(title, {
+            body,
+            icon: '/favicon.ico',
+            tag: 'reminder-alert',
+            requireInteraction: true,
+          });
+        }
+      });
+    }
+  } catch {
+    // Browser notification fallback
   }
 }
 
@@ -59,13 +87,21 @@ export function ReminderAlertModal() {
   const [activeAlert, setActiveAlert] = useState<Reminder | null>(null);
   const alertedIdsRef = useRef<Set<string>>(new Set());
 
+  // Request browser notification permissions automatically on layout mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
+
+  // Poll for scheduled reminders every 3 seconds across the whole app chrome
   const { data: remindersData } = useQuery({
     queryKey: ['reminders'],
     queryFn: async () => {
       const { data } = await api.get('/api/reminders');
       return (data.reminders || []) as Reminder[];
     },
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
 
   const markSentMutation = useMutation({
@@ -74,6 +110,7 @@ export function ReminderAlertModal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 
@@ -83,22 +120,31 @@ export function ReminderAlertModal() {
     const now = new Date().getTime();
     for (const r of reminders) {
       const rTime = new Date(r.time).getTime();
-      // Only alert if time has arrived, AND NOT previously sent/alerted
+      // Alert if scheduled time has arrived AND NOT previously alerted
       if (rTime <= now && !r.isSent && !alertedIdsRef.current.has(r.id)) {
         alertedIdsRef.current.add(r.id);
         setActiveAlert(r);
 
-        // Play reminder chime sound
+        const itemTitle = r.target?.title || r.task?.title || 'Scheduled item';
+
+        // 1. Play audio chime
         playReminderSound();
 
-        // Mark as sent in database immediately so it never repeats on reload
+        // 2. Trigger OS/Browser Native System Notification (shows outside browser tab)
+        triggerBrowserNotification(
+          '⏰ Reminder Alert!',
+          `"${itemTitle}" is due now! Click to open Progress Copilot.`,
+        );
+
+        // 3. Mark sent in DB immediately to prevent repeat on reload
         markSentMutation.mutate(r.id);
 
+        // 4. In-app toast popup
         addToast({
           type: 'reminder',
           title: '⏰ Reminder Alert!',
-          message: `${r.target?.title || r.task?.title || 'Scheduled item'} is due now!`,
-          duration: 10000,
+          message: `"${itemTitle}" is due now!`,
+          duration: 12000,
         });
         break;
       }
