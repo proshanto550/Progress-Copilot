@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -12,7 +12,7 @@ import { api } from '../../lib/api';
  * TopNavbar — header bar for the private layout.
  *
  * Left: dynamic page title (derived from the active sidebar route).
- * Right: daily-streak chip, points chip, notifications bell with dropdown,
+ * Right: daily-streak chip, points chip, notifications bell with unread dot,
  *        rounded avatar that opens the ProfileDropdown.
  */
 export function TopNavbar() {
@@ -22,6 +22,11 @@ export function TopNavbar() {
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [lastViewedNotifs, setLastViewedNotifs] = useState<number>(() => {
+    const saved = localStorage.getItem('last_notif_view_time');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
   const notifBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -31,9 +36,32 @@ export function TopNavbar() {
       const { data } = await api.get('/api/reminders');
       return data.reminders || [];
     },
+    refetchInterval: 15000,
   });
 
-  const remindersCount = remindersData?.length ?? 0;
+  const reminders = remindersData || [];
+
+  // Red light should only be active IF there are triggered reminders that occurred after the user last viewed notifications
+  const hasUnreadAlerts = useMemo(() => {
+    const now = Date.now();
+    return reminders.some((r: any) => {
+      const rTime = new Date(r.time).getTime();
+      return rTime <= now && rTime > lastViewedNotifs;
+    });
+  }, [reminders, lastViewedNotifs]);
+
+  const handleOpenNotifs = () => {
+    const nextState = !notifOpen;
+    setNotifOpen(nextState);
+    setProfileOpen(false);
+
+    if (nextState) {
+      // User opened notifications, clear the red light signal
+      const now = Date.now();
+      setLastViewedNotifs(now);
+      localStorage.setItem('last_notif_view_time', now.toString());
+    }
+  };
 
   const streak = user?.dailyStreak ?? 0;
   const points = user?.points ?? 0;
@@ -76,15 +104,12 @@ export function TopNavbar() {
         <button
           ref={notifBtnRef}
           type="button"
-          onClick={() => {
-            setNotifOpen((v) => !v);
-            setProfileOpen(false);
-          }}
+          onClick={handleOpenNotifs}
           aria-label="Notifications"
           className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
         >
           <BellIcon />
-          {remindersCount > 0 && (
+          {hasUnreadAlerts && (
             <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-white dark:ring-[#0b0717]" />

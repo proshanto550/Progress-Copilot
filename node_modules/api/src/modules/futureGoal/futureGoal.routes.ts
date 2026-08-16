@@ -6,8 +6,11 @@ const router = Router();
 
 router.use(authRequired);
 
-// `me` is the only Future Goal a user has, so the URL doesn't need an id.
+router.get('/', controller.get);
 router.get('/me', controller.get);
+router.put('/', controller.put);
 router.put('/me', controller.put);
+router.post('/', controller.put);
+router.post('/me', controller.put);
 
 export default router;

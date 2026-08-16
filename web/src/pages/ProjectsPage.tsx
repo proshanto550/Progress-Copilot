@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
+import { GitHubCalendar } from 'react-github-calendar';
 import {
   ExternalLink,
   Star,
@@ -12,9 +13,10 @@ import {
   Plus,
   Loader2,
   CheckCircle2,
+  GitCommit,
 } from 'lucide-react';
 import { api } from '../lib/api';
-import { ContributionGrid } from '../components/dashboard/ContributionGrid';
+import { useTheme } from '../context/ThemeContext';
 
 function GithubIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
   return (
@@ -36,6 +38,7 @@ function GithubIcon({ size = 20, className = '' }: { size?: number; className?: 
 
 export function ProjectsPage() {
   const queryClient = useQueryClient();
+  const { theme } = useTheme();
   const [connectModalOpen, setConnectModalOpen] = useState(false);
   const [handleInput, setHandleInput] = useState('');
 
@@ -67,7 +70,7 @@ export function ProjectsPage() {
 
   const profile = data?.profile;
   const repos = data?.repositories ?? [];
-  const contributions = data?.contributions ?? [];
+  const githubUsername = data?.username || profile?.login;
 
   return (
     <div className="space-y-6">
@@ -78,7 +81,7 @@ export function ProjectsPage() {
             <GithubIcon className="text-purple-600 dark:text-fuchsia-400" size={26} /> GitHub Projects
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-violet-300/80 mt-1">
-            Connect your GitHub profile to showcase repositories and activity.
+            Connect your GitHub profile to showcase real-time repositories, commits, and activity.
           </p>
         </div>
 
@@ -115,7 +118,7 @@ export function ProjectsPage() {
           <GithubIcon className="mx-auto text-purple-400 dark:text-purple-400/50 mb-3" size={48} />
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">Connect Your GitHub Account</h3>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-violet-300/70 mt-1 max-w-sm mx-auto">
-            Link your username to automatically import public repositories and display your 365-day contribution calendar.
+            Link your username to automatically import public repositories and display your live 365-day contribution calendar.
           </p>
           <button
             type="button"
@@ -168,13 +171,21 @@ export function ProjectsPage() {
             </a>
           </div>
 
-          {/* Contribution Graph */}
-          {contributions.length > 0 && (
-            <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 sm:p-6 shadow-md">
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-3">
-                GitHub 365-Day Contribution Calendar
+          {/* Real-time GitHub Contribution Calendar */}
+          {githubUsername && (
+            <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 sm:p-6 shadow-md overflow-x-auto">
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <GithubIcon size={18} className="text-purple-600 dark:text-fuchsia-400" /> Real-time GitHub Contribution Calendar
               </h3>
-              <ContributionGrid cells={contributions} />
+              <div className="py-2 flex justify-center">
+                <GitHubCalendar
+                  username={githubUsername}
+                  colorScheme={theme === 'dark' ? 'dark' : 'light'}
+                  fontSize={12}
+                  blockSize={12}
+                  blockMargin={4}
+                />
+              </div>
             </div>
           )}
 
@@ -202,9 +213,17 @@ export function ProjectsPage() {
                         {repo.name} <ExternalLink size={13} className="shrink-0 text-slate-400" />
                       </a>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-violet-300/80 line-clamp-2 mb-3">
-                      {repo.description || 'No description provided.'}
-                    </p>
+                    
+                    {repo.description ? (
+                      <p className="text-xs text-slate-600 dark:text-violet-300/80 line-clamp-2 mb-2">
+                        {repo.description}
+                      </p>
+                    ) : null}
+
+                    {/* Commit count display as requested */}
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-700 dark:text-fuchsia-300 font-bold text-xs mb-3 border border-purple-500/15">
+                      <GitCommit size={13} /> Total Commit -&gt; {repo.commitCount || 1}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-violet-300/60 pt-2 border-t border-purple-200/60 dark:border-cardBorder/40">

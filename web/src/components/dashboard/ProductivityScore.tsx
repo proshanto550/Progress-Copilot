@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react';
 
 /**
- * ProductivityScore — circular progress ring + numeric badge.
- * Pure presentational; takes the percentage from the parent so the same
- * component can be used on Dashboard and My Progress.
+ * ProgressScore — circular progress ring + numeric badge.
+ * Displays overall progress score accurately based on targets, tasks, and streaks.
  */
-export function ProductivityScore({
+export function ProgressScore({
   score,
   subtitle,
   size = 132,
@@ -27,7 +26,7 @@ export function ProductivityScore({
       <div
         className="relative grid place-items-center"
         style={{ width: size, height: size }}
-        aria-label={`Productivity score ${pct} percent`}
+        aria-label={`Progress score ${pct} percent`}
         role="img"
       >
         <svg width={size} height={size} className="-rotate-90">
@@ -37,14 +36,14 @@ export function ProductivityScore({
             r={radius}
             stroke="currentColor"
             strokeWidth={stroke}
-            className="text-white/10"
+            className="text-purple-200/40 dark:text-white/10"
             fill="transparent"
           />
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="url(#scoreGradient)"
+            stroke="url(#progressScoreGradient)"
             strokeWidth={stroke}
             strokeLinecap="round"
             fill="transparent"
@@ -52,21 +51,21 @@ export function ProductivityScore({
             style={{ transition: 'stroke-dasharray 600ms ease' }}
           />
           <defs>
-            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="60%" stopColor="#d946ef" />
-              <stop offset="100%" stopColor="#f43f5e" />
+            <linearGradient id="progressScoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#7c3aed" />
+              <stop offset="50%" stopColor="#c026d3" />
+              <stop offset="100%" stopColor="#0284c7" />
             </linearGradient>
           </defs>
         </svg>
         <div className="absolute inset-0 grid place-items-center">
           <div className="text-center">
-            <div className="text-3xl font-extrabold tabular-nums leading-none">
+            <div className="text-3xl font-extrabold tabular-nums leading-none text-slate-900 dark:text-white">
               {pct}
-              <span className="text-base font-bold text-gray-400">%</span>
+              <span className="text-base font-bold text-slate-500 dark:text-violet-300/70">%</span>
             </div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">
-              Score
+            <div className="text-[10px] uppercase font-bold tracking-wider text-purple-700 dark:text-fuchsia-400 mt-1">
+              Progress
             </div>
           </div>
         </div>
@@ -74,9 +73,11 @@ export function ProductivityScore({
       <div className="min-w-0">
         {children}
         {subtitle && (
-          <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+          <p className="text-xs text-slate-500 dark:text-violet-300/70 mt-1 font-medium">{subtitle}</p>
         )}
       </div>
     </div>
   );
 }
+
+export { ProgressScore as ProductivityScore };

@@ -1,39 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import type { ContributionCell } from '../../lib/types';
 
 /**
- * ContributionGrid — GitHub-style heatmap.
- *
- * Layout:
- *   ┌──────┬─────────────────────────────────────────────┐
- *   │      │ Aug  Sep  Oct  Nov  Dec  Jan  Feb  …  Jul   │  ← month labels
- *   ├──────┼─────────────────────────────────────────────┤
- *   │ Mon  │ ▢ ▢ ▢ ▣ ▢ ▣ ▣ ▢ ▢ ▣ ▣ ▣ ▢ …                 │
- *   │      │                                             │
- *   │ Wed  │ ▢ ▢ ▣ ▣ ▢ ▣ ▢ ▣ ▢ ▣ ▢ ▢ ▢ …                 │
- *   │      │                                             │
- *   │ Fri  │ ▢ ▢ ▢ ▢ ▣ ▣ ▣ ▢ ▣ ▢ ▢ ▢ ▢ …                 │
- *   └──────┴─────────────────────────────────────────────┘
- *                                              Less ▢▣▤▥ More
- *
- * Color buckets (per spec):
- *   0  → empty       (white/5)
- *   1  → level 1     (emerald-900)
- *   2  → level 2     (emerald-700)
- *   3  → level 3     (emerald-500)
- *   4+ → level 4     (emerald-300)
- *
- * Width handling: the grid is wrapped in a `ResizeObserver` so `cellSize`
- * shrinks automatically when the column is narrow (e.g. nested inside a
- * `lg:grid-cols-2` card). The grid itself never overflows its parent.
+ * ContributionGrid — GitHub-style activity & daily streak calendar.
  */
 
 const COLOR_CLASSES = [
-  'bg-white/5',
-  'bg-emerald-900/80',
-  'bg-emerald-700/90',
-  'bg-emerald-500',
-  'bg-emerald-300',
+  'bg-purple-100/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/5',
+  'bg-emerald-300 dark:bg-emerald-900/80 border border-emerald-400 dark:border-emerald-700',
+  'bg-emerald-400 dark:bg-emerald-700 border border-emerald-500 dark:border-emerald-600',
+  'bg-emerald-500 dark:bg-emerald-500 border border-emerald-600 dark:border-emerald-400',
+  'bg-emerald-600 dark:bg-emerald-300 border border-emerald-700 dark:border-emerald-200',
 ];
 
 const MONTHS_SHORT = [
@@ -42,7 +19,7 @@ const MONTHS_SHORT = [
 ];
 
 const DAY_LABELS = [
-  '', // Sun (hidden)
+  '', // Sun
   'Mon',
   '', // Tue
   'Wed',
@@ -59,24 +36,18 @@ export function levelFor(count: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-/**
- * Bucket the dense cells array into weeks (Sun-first) and compute the
- * month label position for each column. The first column is left-padded
- * so the first cell always falls on its actual Sun–Sat row.
- */
 export function buildWeeks(cells: ContributionCell[]) {
   if (!cells.length) {
     return { weeks: [] as Array<Array<ContributionCell | null>>, monthLabels: [] as Array<{ week: number; label: string }> };
   }
 
   const first = new Date(cells[0].date + 'T00:00:00Z');
-  const leadPad = first.getUTCDay(); // 0 = Sun
+  const leadPad = first.getUTCDay();
 
   const padded: Array<ContributionCell | null> = [
     ...Array.from({ length: leadPad }, () => null),
     ...cells,
   ];
-  // Round up to a full week.
   while (padded.length % 7 !== 0) padded.push(null);
 
   const weeks: Array<Array<ContributionCell | null>> = [];
@@ -84,7 +55,6 @@ export function buildWeeks(cells: ContributionCell[]) {
     weeks.push(padded.slice(i, i + 7));
   }
 
-  // Month label: tag the first week of each new month.
   const monthLabels: Array<{ week: number; label: string }> = [];
   let lastMonth = -1;
   weeks.forEach((week, wi) => {
@@ -100,10 +70,6 @@ export function buildWeeks(cells: ContributionCell[]) {
   return { weeks, monthLabels };
 }
 
-/**
- * Derive the list of calendar years present in the cells array. Used by
- * the year-filter <select> in the card header.
- */
 export function getYears(cells: ContributionCell[]): number[] {
   if (!cells.length) return [];
   const years = new Set<number>();
@@ -117,20 +83,17 @@ export function ContributionGrid({
   cells,
   selectedYear,
   onYearChange,
-  cellSize: cellSizeProp,
+  cellSize: cellSizeProp = 11,
   gap = 3,
   onDayClick,
 }: {
   cells: ContributionCell[];
-  /** Filter to a single calendar year; `null` = "all" / "last year". */
   selectedYear?: number | null;
   onYearChange?: (year: number | null) => void;
-  /** Override auto cell size (used in tests / future zoom view). */
   cellSize?: number;
   gap?: number;
   onDayClick?: (cell: ContributionCell) => void;
 }) {
-  // ── Filter by selected year, if any ───────────────────────────────────
   const filteredCells = useMemo(() => {
     if (!selectedYear) return cells;
     return cells.filter((c) => {
@@ -144,36 +107,7 @@ export function ContributionGrid({
     [filteredCells],
   );
 
-  // ── Auto-scaling cell size so the grid never overflows the card ───────
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [cellSize, setCellSize] = useState(cellSizeProp ?? 12);
-
-  useEffect(() => {
-    if (cellSizeProp) {
-      setCellSize(cellSizeProp);
-      return;
-    }
-    const el = containerRef.current;
-    if (!el) return;
-    const compute = () => {
-      const width = el.clientWidth;
-      // Reserve room for day labels (~28px) and a small bit of slack.
-      const available = Math.max(0, width - 28);
-      // Aim for ~7 columns minimum visible, but prefer smaller cells when
-      // wider. We pick the largest cell size that fits the year width.
-      const expectedCols = weeks.length || 53;
-      const cols = Math.max(expectedCols, 7);
-      const totalGap = gap * (cols - 1);
-      const ideal = Math.floor((available - totalGap) / cols);
-      const clamped = Math.max(7, Math.min(13, ideal));
-      setCellSize(clamped);
-    };
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [weeks.length, cellSizeProp, gap]);
-
+  const cellSize = cellSizeProp;
   const years = useMemo(() => getYears(cells), [cells]);
   const totalActive = useMemo(
     () => filteredCells.filter((c) => c.count > 0).length,
@@ -181,110 +115,105 @@ export function ContributionGrid({
   );
 
   return (
-    <div className="w-full">
-      <div
-        ref={containerRef}
-        className="relative w-full select-none"
-        aria-label={`Contribution grid, ${filteredCells.length} days, ${totalActive} active`}
-      >
-        {/* Day labels (left column) */}
+    <div className="w-full flex flex-col items-center">
+      {/* Horizontally centered and scrollable on small screens */}
+      <div className="w-full overflow-x-auto py-2 flex justify-center">
         <div
-          className="flex flex-col text-[10px] text-gray-500 absolute left-0 top-0"
-          style={{ rowGap: gap, paddingTop: 18 /* reserve row for month labels */ }}
+          className="relative select-none inline-block pb-1"
+          style={{ width: weeks.length * (cellSize + gap) + 36 }}
+          aria-label={`Contribution grid, ${filteredCells.length} days, ${totalActive} active`}
         >
-          {DAY_LABELS.map((label, i) => (
-            <div
-              key={i}
-              className="leading-none"
-              style={{ height: cellSize }}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-
-        {/* Month labels (top row) */}
-        <div
-          className="absolute top-0 text-[10px] text-gray-500"
-          style={{
-            left: 28,
-            right: 0,
-            height: 14,
-          }}
-        >
+          {/* Day labels (left column) */}
           <div
-            className="relative"
-            style={{ width: weeks.length * (cellSize + gap) - gap, height: 14 }}
+            className="flex flex-col text-[10px] font-semibold text-slate-500 dark:text-violet-300/70 absolute left-0 top-0"
+            style={{ rowGap: gap, paddingTop: 18 }}
           >
-            {monthLabels.map((m) => (
-              <span
-                key={`${m.week}-${m.label}`}
-                className="absolute"
-                style={{
-                  left: m.week * (cellSize + gap),
-                  lineHeight: '14px',
-                }}
+            {DAY_LABELS.map((label, i) => (
+              <div
+                key={i}
+                className="leading-none text-right pr-2"
+                style={{ height: cellSize, lineHeight: `${cellSize}px` }}
               >
-                {m.label}
-              </span>
+                {label}
+              </div>
+            ))}
+          </div>
+
+          {/* Month labels (top row) */}
+          <div
+            className="absolute top-0 text-[10px] font-bold text-slate-600 dark:text-violet-300/80"
+            style={{ left: 30, right: 0, height: 14 }}
+          >
+            <div className="relative" style={{ height: 14 }}>
+              {monthLabels.map((m) => (
+                <span
+                  key={`${m.week}-${m.label}`}
+                  className="absolute"
+                  style={{
+                    left: m.week * (cellSize + gap),
+                    lineHeight: '14px',
+                  }}
+                >
+                  {m.label}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid columns */}
+          <div
+            className="flex"
+            style={{
+              marginLeft: 30,
+              marginTop: 18,
+              columnGap: gap,
+            }}
+          >
+            {weeks.map((week, wi) => (
+              <div
+                key={wi}
+                className="flex flex-col"
+                style={{ rowGap: gap }}
+              >
+                {week.map((cell, di) => {
+                  if (cell === null) {
+                    return (
+                      <div
+                        key={di}
+                        style={{ width: cellSize, height: cellSize }}
+                      />
+                    );
+                  }
+                  const level = levelFor(cell.count);
+                  return (
+                    <button
+                      key={cell.date}
+                      type="button"
+                      title={`${cell.date}: ${cell.count} completion${cell.count === 1 ? '' : 's'}`}
+                      onClick={onDayClick ? () => onDayClick(cell) : undefined}
+                      className={`rounded-[2.5px] ${COLOR_CLASSES[level]} hover:ring-2 hover:ring-purple-500 transition-all cursor-pointer`}
+                      style={{ width: cellSize, height: cellSize }}
+                      aria-label={`${cell.date}, ${cell.count} completed`}
+                    />
+                  );
+                })}
+              </div>
             ))}
           </div>
         </div>
-
-        {/* Grid */}
-        <div
-          className="flex"
-          style={{
-            marginLeft: 28,
-            marginTop: 18,
-            columnGap: gap,
-          }}
-        >
-          {weeks.map((week, wi) => (
-            <div
-              key={wi}
-              className="flex flex-col"
-              style={{ rowGap: gap }}
-            >
-              {week.map((cell, di) => {
-                if (cell === null) {
-                  return (
-                    <div
-                      key={di}
-                      style={{ width: cellSize, height: cellSize }}
-                    />
-                  );
-                }
-                const level = levelFor(cell.count);
-                return (
-                  <button
-                    key={cell.date}
-                    type="button"
-                    title={`${cell.date}: ${cell.count} task${cell.count === 1 ? '' : 's'}`}
-                    onClick={onDayClick ? () => onDayClick(cell) : undefined}
-                    className={`rounded-[2px] ${COLOR_CLASSES[level]} hover:ring-1 hover:ring-white/40 transition`}
-                    style={{ width: cellSize, height: cellSize }}
-                    aria-label={`${cell.date}, ${cell.count} completed`}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
       </div>
 
-      {/* Footer row: year filter chips (left) + Less/More legend (right) */}
-      <div className="mt-3 flex items-center justify-between gap-3 text-[10px] text-gray-400">
-        <div className="flex items-center gap-1">
+      {/* Footer row: Year filter & Centered Less/More Legend */}
+      <div className="mt-4 pt-3 border-t border-purple-200/60 dark:border-white/10 w-full flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-violet-300/80 font-medium">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => onYearChange?.(null)}
-            className={
-              'px-2 py-1 rounded-md transition ' +
-              (selectedYear == null
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-white/5')
-            }
+            className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+              selectedYear == null
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-violet-300 hover:bg-purple-500/10'
+            }`}
           >
             Last year
           </button>
@@ -293,27 +222,30 @@ export function ContributionGrid({
               key={y}
               type="button"
               onClick={() => onYearChange?.(y)}
-              className={
-                'px-2 py-1 rounded-md transition ' +
-                (selectedYear === y
-                  ? 'bg-white/10 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5')
-              }
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedYear === y
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-violet-300 hover:bg-purple-500/10'
+              }`}
             >
               {y}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <span>Less</span>
-          {COLOR_CLASSES.map((c, i) => (
-            <span
-              key={i}
-              className={`rounded-[2px] ${c}`}
-              style={{ width: 11, height: 11 }}
-            />
-          ))}
-          <span>More</span>
+
+        {/* Less / More Legend with proper alignment */}
+        <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-white/[0.04] px-3 py-1.5 rounded-xl border border-purple-200/50 dark:border-white/5">
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-violet-300">Less</span>
+          <div className="flex items-center gap-1">
+            {COLOR_CLASSES.map((c, i) => (
+              <span
+                key={i}
+                className={`rounded-[2.5px] ${c}`}
+                style={{ width: 12, height: 12 }}
+              />
+            ))}
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-violet-300">More</span>
         </div>
       </div>
     </div>

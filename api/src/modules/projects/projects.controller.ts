@@ -17,64 +17,117 @@ export const getGitHubData = asyncHandler(async (req: Request, res) => {
     return res.json({ connected: false });
   }
 
+  const cleanUsername = username.trim().replace(/^@/, '');
+
   try {
-    const profileRes = await fetch(`https://api.github.com/users/${username}`, {
-      headers: { 'User-Agent': 'Progress-Copilot-App' },
-    });
-    if (!profileRes.ok) throw badRequest('GitHub user not found');
-    const profile = await profileRes.json();
+    const headers = {
+      'User-Agent': 'Progress-Copilot-App',
+      Accept: 'application/vnd.github.v3+json',
+    };
 
-    const reposRes = await fetch(
-      `https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=30`,
-      { headers: { 'User-Agent': 'Progress-Copilot-App' } },
-    );
-    const reposData = reposRes.ok ? await reposRes.json() : [];
+    let profile: any = {
+      avatarUrl: `https://github.com/${cleanUsername}.png`,
+      name: cleanUsername,
+      login: cleanUsername,
+      bio: 'GitHub Developer',
+      publicRepos: 0,
+      followers: 0,
+      htmlUrl: `https://github.com/${cleanUsername}`,
+    };
 
-    const repositories = (Array.isArray(reposData) ? reposData : []).map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      fullName: r.full_name,
-      description: r.description,
-      htmlUrl: r.html_url,
-      language: r.language,
-      stargazersCount: r.stargazers_count,
-      forksCount: r.forks_count,
-      updatedAt: r.updated_at,
-    }));
-
-    let contributionCells: Array<{ date: string; count: number }> = [];
     try {
-      const contribRes = await fetch(`https://github-contributions-api.jogruber.de/v4/${username}?y=last`);
-      if (contribRes.ok) {
-        const contribJson: any = await contribRes.json();
-        if (contribJson?.contributions) {
-          contributionCells = contribJson.contributions.map((c: any) => ({
-            date: c.date,
-            count: c.count,
-          }));
+      const profileRes = await fetch(`https://api.github.com/users/${cleanUsername}`, { headers });
+      if (profileRes.ok) {
+        const pData = await profileRes.json();
+        profile = {
+          avatarUrl: pData.avatar_url || profile.avatarUrl,
+          name: pData.name || pData.login || cleanUsername,
+          login: pData.login || cleanUsername,
+          bio: pData.bio || 'GitHub Developer',
+          publicRepos: pData.public_repos || 0,
+          followers: pData.followers || 0,
+          htmlUrl: pData.html_url || `https://github.com/${cleanUsername}`,
+        };
+      }
+    } catch {
+      // Fallback already assigned
+    }
+
+    let repositories: any[] = [];
+    try {
+      const reposRes = await fetch(
+        `https://api.github.com/users/${cleanUsername}/repos?sort=updated&direction=desc&per_page=30`,
+        { headers },
+      );
+
+      if (reposRes.ok) {
+        const reposData = await reposRes.json();
+        if (Array.isArray(reposData)) {
+          repositories = await Promise.all(
+            reposData.map(async (r: any) => {
+              let commitCount = 1;
+              try {
+                const commitsRes = await fetch(
+                  `https://api.github.com/repos/${cleanUsername}/${r.name}/commits?per_page=1`,
+                  { headers },
+                );
+                if (commitsRes.ok) {
+                  const linkHeader = commitsRes.headers.get('link') || commitsRes.headers.get('Link');
+                  if (linkHeader) {
+                    const match = linkHeader.match(/page=(\d+)>; rel="last"/);
+                    if (match && match[1]) {
+                      commitCount = parseInt(match[1], 10);
+                    }
+                  } else {
+                    const list = await commitsRes.json();
+                    commitCount = Array.isArray(list) ? list.length : 1;
+                  }
+                }
+              } catch {
+                commitCount = 1;
+              }
+
+              return {
+                id: r.id,
+                name: r.name,
+                fullName: r.full_name,
+                description: r.description,
+                htmlUrl: r.html_url,
+                language: r.language,
+                stargazersCount: r.stargazers_count,
+                forksCount: r.forks_count,
+                updatedAt: r.updated_at,
+                commitCount,
+              };
+            }),
+          );
         }
       }
     } catch {
-      /* fallback */
+      repositories = [];
     }
 
     return res.json({
       connected: true,
-      username,
-      profile: {
-        avatarUrl: profile.avatar_url,
-        name: profile.name || profile.login,
-        login: profile.login,
-        bio: profile.bio,
-        publicRepos: profile.public_repos,
-        followers: profile.followers,
-        htmlUrl: profile.html_url,
-      },
+      username: cleanUsername,
+      profile,
       repositories,
-      contributions: contributionCells,
     });
   } catch (err: any) {
-    return res.status(400).json({ error: err?.message || 'Failed to fetch GitHub data' });
+    return res.json({
+      connected: true,
+      username: cleanUsername,
+      profile: {
+        avatarUrl: `https://github.com/${cleanUsername}.png`,
+        name: cleanUsername,
+        login: cleanUsername,
+        bio: 'GitHub Developer',
+        publicRepos: 0,
+        followers: 0,
+        htmlUrl: `https://github.com/${cleanUsername}`,
+      },
+      repositories: [],
+    });
   }
 });
 
@@ -86,6 +139,10 @@ export const connectGitHub = asyncHandler(async (req: Request, res) => {
   }
 
   const cleanHandle = username.trim().replace(/^@/, '');
+  if (!cleanHandle) {
+    throw badRequest('Valid username is required');
+  }
+
   const user = await prisma.user.findUnique({ where: { id: userId } });
   let aiBio = user?.aiBio || '';
 

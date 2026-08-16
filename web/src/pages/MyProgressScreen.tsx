@@ -1,22 +1,14 @@
+import { Flame, Star, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useProgress } from '../modules/dashboard/useDashboard';
 import { DashboardCard } from '../components/dashboard/DashboardCard';
-import { ProductivityScore } from '../components/dashboard/ProductivityScore';
+import { ProgressScore } from '../components/dashboard/ProductivityScore';
 import { TargetProgressBars } from '../components/dashboard/TargetProgressBars';
 import { TaskCompletionTrendChart } from '../components/dashboard/TaskCompletionTrendChart';
 import { PointsDistributionChart } from '../components/dashboard/PointsDistributionChart';
 
 /**
  * MyProgressScreen — /dashboard/my-progress.
- *
- * Pure analytics view:
- *   • Score ring (same ProductivityScore component as the dashboard)
- *   • All-target progress bars (full list, not just 4)
- *   • 30-day task completion trend (Recharts AreaChart)
- *   • HIGH/MED/LOW points distribution donut (Recharts PieChart)
- *
- * Skeleton + inline error follow the same conventions as the dashboard
- * so the layout feels uniform across the private area.
  */
 export function MyProgressScreen() {
   const { user } = useAuth();
@@ -28,7 +20,7 @@ export function MyProgressScreen() {
         {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-32 rounded-2xl bg-white/5 animate-pulse"
+            className="h-32 rounded-2xl bg-slate-200/60 dark:bg-white/5 animate-pulse"
             aria-label="Loading"
           />
         ))}
@@ -51,94 +43,101 @@ export function MyProgressScreen() {
     targetBreakdown,
     tasksCompletedLast30Days,
     pointsDistribution,
-  } = data;
+  } = data as any;
 
-  const name = user?.fullName || progUser.fullName || 'there';
-  const firstName = name.split(' ')[0];
+  const progressScoreVal = progUser.progressScore ?? progUser.productivityScore ?? 0;
+  const avatar = user?.avatar || progUser.avatar;
+  const initial = (user?.fullName || progUser.fullName || '?').trim().charAt(0).toUpperCase();
 
   const completedCount = targetBreakdown.filter(
-    (t) => t.status === 'COMPLETED',
+    (t: any) => t.status === 'COMPLETED',
   ).length;
   const activeCount = targetBreakdown.length - completedCount;
 
   return (
     <div className="space-y-6">
-      {/* ─── Score row ───────────────────────────────────────────── */}
-      <DashboardCard>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar
-              name={user?.fullName || progUser.fullName}
-              avatar={user?.avatar || progUser.avatar}
+      {/* ─── Premium Reports-style Profile & Progress Score Banner ───────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-6 shadow-md flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+          {avatar ? (
+            <img
+              src={avatar}
+              alt={user?.fullName || progUser.fullName}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-purple-400 shadow-md shrink-0"
             />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {firstName}'s progress
-              </h1>
-              <p className="text-sm text-gray-400">
-                {activeCount} active · {completedCount} completed ·{' '}
-                {progUser.points} pts earned
-              </p>
+          ) : (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
+              {initial}
+            </div>
+          )}
+          <div>
+            <span className="text-xs uppercase font-extrabold tracking-wider text-purple-600 dark:text-fuchsia-400">
+              {progUser.role || 'Official Progress Candidate'}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5">
+              {user?.fullName || progUser.fullName}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-violet-300/80 mt-0.5 font-medium">
+              {user?.email || progUser.email || `${activeCount} active targets · ${completedCount} completed`}
+            </p>
+
+            <div className="flex items-center justify-center sm:justify-start gap-3 mt-3">
+              <div className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/20 text-center">
+                <span className="text-xs font-black text-orange-600 dark:text-orange-400 inline-flex items-center gap-1">
+                  <Flame size={14} /> {progUser.dailyStreak} Days Streak
+                </span>
+              </div>
+              <div className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/20 text-center">
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                  <Star size={14} /> {progUser.points} Points
+                </span>
+              </div>
             </div>
           </div>
-          <ProductivityScore
-            score={progUser.productivityScore}
+        </div>
+
+        <div className="flex items-center gap-4 bg-white/70 dark:bg-white/[0.03] p-4 rounded-2xl border border-purple-200/60 dark:border-white/10 shadow-sm shrink-0">
+          <ProgressScore
+            score={progressScoreVal}
             subtitle={`${progUser.dailyStreak}-day daily streak`}
           >
-            <div className="text-xs uppercase tracking-wider text-gray-400">
-              Productivity
+            <div className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-fuchsia-400 flex items-center gap-1">
+              <Zap size={14} /> Progress Score
             </div>
-            <div className="text-sm text-gray-300">
-              Driven by completed tasks.
+            <div className="text-xs text-slate-600 dark:text-violet-200 mt-0.5 font-medium">
+              Driven by targets & tasks
             </div>
-          </ProductivityScore>
+          </ProgressScore>
         </div>
-      </DashboardCard>
+      </div>
 
       {/* ─── Target completion bars ──────────────────────────────── */}
       <DashboardCard
-        title="Target completion"
-        subtitle="Each bar shows percent of sub-tasks done."
+        title="Target Progress Breakdown"
+        subtitle="Progress computed across active and completed targets."
       >
         <TargetProgressBars
           targets={targetBreakdown}
-          emptyMessage="You don't have any targets yet."
+          emptyMessage="No targets available."
         />
       </DashboardCard>
 
-      {/* ─── Trend + distribution ────────────────────────────────── */}
+      {/* ─── Trend + Points distribution charts ─────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard
-          title="Task completion trend"
-          subtitle="Last 30 days · one point per completed task."
-          className="min-w-0"
+          title="30-Day Task Completion Trend"
+          subtitle="Daily task completions over the last 30 days."
         >
           <TaskCompletionTrendChart data={tasksCompletedLast30Days} />
         </DashboardCard>
 
         <DashboardCard
-          title="Points distribution"
-          subtitle="Total points earned, grouped by task priority."
-          className="min-w-0"
+          title="Points Distribution"
+          subtitle="Points earned by target priority (HIGH, MEDIUM, LOW)."
         >
           <PointsDistributionChart data={pointsDistribution} />
         </DashboardCard>
       </div>
-    </div>
-  );
-}
-
-function Avatar({ name, avatar }: { name: string; avatar: string | null }) {
-  const initial = (name || '?').trim().charAt(0).toUpperCase();
-  return (
-    <div className="h-14 w-14 rounded-2xl overflow-hidden ring-2 ring-white/10 shrink-0">
-      {avatar ? (
-        <img src={avatar} alt={name} className="h-full w-full object-cover" />
-      ) : (
-        <div className="h-full w-full grid place-items-center bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white text-xl font-black">
-          {initial}
-        </div>
-      )}
     </div>
   );
 }

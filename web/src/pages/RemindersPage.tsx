@@ -125,8 +125,14 @@ export function RemindersPage() {
     return () => clearInterval(interval);
   }, [reminders, addToast]);
 
-  const upcoming = reminders.filter((r) => new Date(r.time) > new Date());
-  const past = reminders.filter((r) => new Date(r.time) <= new Date());
+  const upcoming = [...reminders]
+    .filter((r) => new Date(r.time) > new Date())
+    .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+  const past = [...reminders]
+    .filter((r) => new Date(r.time) <= new Date())
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
   const targets = targetsData ?? [];
   const tasks = tasksData ?? [];
 

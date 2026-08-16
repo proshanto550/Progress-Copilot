@@ -12,6 +12,7 @@ import {
   Loader2,
   TrendingUp,
   Award,
+  Zap,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../context/ToastContext';
@@ -61,6 +62,9 @@ export function ReportsPage() {
 
   const user = data?.user;
   const stats = data?.stats;
+  const progressScore = stats?.progressScore ?? 0;
+  const avatar = user?.avatar;
+  const initial = (user?.fullName || '?').trim().charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -102,16 +106,29 @@ export function ReportsPage() {
 
       {!isLoading && stats && (
         <div className="space-y-6">
-          {/* User Overview Banner */}
-          <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-            <div>
-              <span className="text-xs uppercase font-extrabold tracking-wider text-purple-600 dark:text-fuchsia-400">
-                Official Report Candidate
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
-                {user?.fullName}
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-violet-300/80 mt-0.5">{user?.email}</p>
+          {/* User Overview Banner with Profile Photo */}
+          <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-6 shadow-md flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt={user?.fullName || 'avatar'}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-purple-400 shadow-md shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
+                  {initial}
+                </div>
+              )}
+              <div>
+                <span className="text-xs uppercase font-extrabold tracking-wider text-purple-600 dark:text-fuchsia-400">
+                  Official Progress Candidate
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5">
+                  {user?.fullName}
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-violet-300/80 mt-0.5">{user?.email}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -133,6 +150,32 @@ export function ReportsPage() {
 
           {/* Metric Cards Grid */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {/* Progress Score Card */}
+            <div className="rounded-2xl border-2 border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/10 to-indigo-500/10 dark:from-[#210d3d]/90 dark:to-[#0f0a24]/95 p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-fuchsia-400">
+                  Progress Score
+                </span>
+                <div className="w-8 h-8 rounded-xl bg-fuchsia-500/20 text-fuchsia-600 dark:text-fuchsia-300 flex items-center justify-center">
+                  <Zap size={18} />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">
+                {progressScore} <span className="text-sm font-semibold text-slate-500 dark:text-violet-300">/ 100</span>
+              </div>
+              <div className="mt-3">
+                <div className="h-2.5 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 via-sky-500 to-purple-600 rounded-full"
+                    style={{ width: `${progressScore}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-purple-700 dark:text-fuchsia-300 font-bold mt-1.5 flex items-center gap-1">
+                  <TrendingUp size={12} /> {progressScore >= 80 ? 'Exceptional Progress!' : progressScore >= 50 ? 'Steady Growth Track' : 'Getting Started'}
+                </p>
+              </div>
+            </div>
+
             {/* Target Completion */}
             <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
@@ -183,7 +226,7 @@ export function ReportsPage() {
               </div>
             </div>
 
-            {/* Productivity Score */}
+            {/* Productivity Standing */}
             <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-slate-600 dark:text-violet-300">Productivity Standing</span>

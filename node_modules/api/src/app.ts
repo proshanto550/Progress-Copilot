@@ -14,6 +14,7 @@ import coursesRoutes from './modules/courses/courses.routes';
 import projectsRoutes from './modules/projects/projects.routes';
 import remindersRoutes from './modules/reminders/reminders.routes';
 import reportsRoutes from './modules/reports/reports.routes';
+import settingsRoutes from './modules/settings/settings.routes';
 import { errorHandler } from './middlewares/error';
 import { prisma } from './lib/prisma';
 
@@ -48,6 +49,7 @@ app.use('/api/courses', coursesRoutes);
 app.use('/api/projects', projectsRoutes);
 app.use('/api/reminders', remindersRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use(errorHandler);
 

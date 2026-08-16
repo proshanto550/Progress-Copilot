@@ -42,6 +42,7 @@ export const createReminder = asyncHandler(async (req: Request, res) => {
       targetId: targetId || null,
       taskId: taskId || null,
       time: reminderTime,
+      isSent: false,
     },
     include: {
       target: { select: { id: true, title: true, priority: true } },
@@ -49,6 +50,21 @@ export const createReminder = asyncHandler(async (req: Request, res) => {
     },
   });
   return res.status(201).json({ reminder });
+});
+
+export const markReminderSent = asyncHandler(async (req: Request, res) => {
+  const userId = (req as any).user?.id as string;
+  const { id } = req.params;
+
+  const existing = await prisma.reminder.findFirst({ where: { id, userId } });
+  if (!existing) throw notFound('Reminder not found');
+
+  const reminder = await prisma.reminder.update({
+    where: { id },
+    data: { isSent: true },
+  });
+
+  return res.json({ ok: true, reminder });
 });
 
 export const deleteReminder = asyncHandler(async (req: Request, res) => {

@@ -12,6 +12,7 @@ export const getReportSummary = asyncHandler(async (req: Request, res) => {
     select: {
       fullName: true,
       email: true,
+      avatar: true,
       points: true,
       dailyStreak: true,
       createdAt: true,
@@ -27,11 +28,17 @@ export const getReportSummary = asyncHandler(async (req: Request, res) => {
   const completedTargets = targets.filter((t) => t.status === 'COMPLETED').length;
   const completedTasks = tasks.filter((t) => t.isCompleted).length;
 
+  const targetScore = targets.length ? (completedTargets / targets.length) * 40 : 0;
+  const taskScore = tasks.length ? (completedTasks / tasks.length) * 35 : 0;
+  const streakScore = Math.min(user.dailyStreak * 5, 25);
+  const progressScore = Math.min(100, Math.round(targetScore + taskScore + streakScore));
+
   return res.json({
     user,
     stats: {
       points: user.points,
       dailyStreak: user.dailyStreak,
+      progressScore,
       totalTargets: targets.length,
       completedTargets,
       targetCompletionRate: targets.length ? Math.round((completedTargets / targets.length) * 100) : 0,
@@ -57,6 +64,11 @@ export const downloadPDFReport = asyncHandler(async (req: Request, res) => {
 
   const completedTargets = targets.filter((t) => t.status === 'COMPLETED').length;
   const completedTasks = tasks.filter((t) => t.isCompleted).length;
+
+  const targetScore = targets.length ? (completedTargets / targets.length) * 40 : 0;
+  const taskScore = tasks.length ? (completedTasks / tasks.length) * 35 : 0;
+  const streakScore = Math.min(user.dailyStreak * 5, 25);
+  const progressScore = Math.min(100, Math.round(targetScore + taskScore + streakScore));
 
   const doc = new PDFDocument({ margin: 50 });
 
@@ -117,13 +129,14 @@ export const downloadPDFReport = asyncHandler(async (req: Request, res) => {
     .fontSize(14)
     .font('Helvetica-Bold')
     .fillColor('#7c3aed')
-    .text('Key Productivity Metrics');
+    .text('Key Productivity & Progress Metrics');
   doc.moveDown(0.5);
 
   doc
     .fontSize(11)
     .font('Helvetica')
     .fillColor('#1e293b')
+    .text(`• Overall Progress Score: ${progressScore} / 100`)
     .text(`• Total Productivity Points: ${user.points} pts`)
     .text(`• Daily Streak: ${user.dailyStreak} Days`)
     .text(`• Targets Completed: ${completedTargets} / ${targets.length}`)

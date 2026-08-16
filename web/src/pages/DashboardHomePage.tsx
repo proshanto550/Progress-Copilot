@@ -1,43 +1,50 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Bell,
+  BookOpen,
+  GraduationCap,
+  Clock,
+  ExternalLink,
+  Flame,
+  Star,
+  Zap,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboard } from '../modules/dashboard/useDashboard';
 import { useTasks } from '../modules/tasks/useTasks';
 import { DashboardCard } from '../components/dashboard/DashboardCard';
 import { ContributionGrid } from '../components/dashboard/ContributionGrid';
-import { ProductivityScore } from '../components/dashboard/ProductivityScore';
+import { ProgressScore } from '../components/dashboard/ProductivityScore';
 import { TargetProgressBars } from '../components/dashboard/TargetProgressBars';
 import type { Task } from '../lib/types';
 import { getErrorMessage } from '../lib/api';
 
-/**
- * DashboardHomePage — the /dashboard default route.
- *
- * Layout (responsive):
- *   ┌──────────────────────────────────────────────────────────┐
- *   │ Greeting row · avatar + ProductivityScore ring          │
- *   ├────────────────────────────┬─────────────────────────────┤
- *   │ Top 4 Targets (View All)   │ Pending Tasks (View All)   │
- *   ├────────────────────────────┴─────────────────────────────┤
- *   │ Reminders strip                  │ Projects strip (Ph 8) │
- *   ├──────────────────────────────────────────────────────────┤
- *   │ 365-day contribution grid + streak chip                  │
- *   └──────────────────────────────────────────────────────────┘
- *
- * Toggling a task strikes-through the title immediately (optimistic),
- * then awaits the API call. If the call fails, the strike is reverted
- * and an inline error appears under the row.
- */
+function GithubIcon({ size = 20, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+      />
+    </svg>
+  );
+}
+
 export function DashboardHomePage() {
   const { user, refresh } = useAuth();
   const { data, loading, error, reload } = useDashboard();
   const { toggle } = useTasks();
 
-  // Per-task local state for optimistic strike-through.
   const [pendingToggles, setPendingToggles] = useState<Set<string>>(new Set());
-  const [strikeOverrides, setStrikeOverrides] = useState<
-    Record<string, boolean>
-  >({});
+  const [strikeOverrides, setStrikeOverrides] = useState<Record<string, boolean>>({});
   const [toggleError, setToggleError] = useState<string | null>(null);
 
   const handleToggle = async (task: Task) => {
@@ -47,12 +54,9 @@ export function DashboardHomePage() {
     setToggleError(null);
     try {
       await toggle(task.id, next);
-      // Refresh top-level counters (points, streak) on the navbar.
       await refresh();
-      // Re-fetch the dashboard so the score + grid + pending list stay fresh.
       await reload();
     } catch (e) {
-      // Revert the optimistic strike.
       setStrikeOverrides((m) => {
         const c = { ...m };
         delete c[task.id];
@@ -82,56 +86,88 @@ export function DashboardHomePage() {
 
   if (!data) return null;
 
-  const { user: dashUser, topTargets, pendingTasks, upcomingReminders, projects, contributionGrid } = data;
-  const name = user?.fullName || dashUser.fullName || 'there';
-  const firstName = name.split(' ')[0];
+  const {
+    user: dashUser,
+    topTargets,
+    pendingTasks = [],
+    upcomingReminders = [],
+    projects,
+    recentNotes = [],
+    recentCourses = [],
+    contributionGrid,
+  } = data as any;
 
-  // Days in the trailing 365-day window where the user completed at least
-  // one task — feeds the "X Days Active in last year" card title.
-  const activeDays = contributionGrid.cells.filter((c) => c.count > 0).length;
+  const activeDays = contributionGrid.cells.filter((c: any) => c.count > 0).length;
+  const progressScoreVal = dashUser.progressScore ?? dashUser.productivityScore ?? 0;
+  const avatar = user?.avatar || dashUser.avatar;
+  const initial = (user?.fullName || dashUser.fullName || '?').trim().charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6">
-      {/* ─── Greeting row ─────────────────────────────────────────── */}
-      <DashboardCard>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar
-              name={user?.fullName || dashUser.fullName}
-              avatar={user?.avatar || dashUser.avatar}
+      {/* ─── Premium Profile & Progress Score Banner (Reports-style) ─────────────────────────────────────────── */}
+      <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-6 shadow-md flex flex-col lg:flex-row items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+          {avatar ? (
+            <img
+              src={avatar}
+              alt={user?.fullName || dashUser.fullName}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-purple-400 shadow-md shrink-0"
             />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                Welcome back, {firstName}.
-              </h1>
-              <p className="text-sm text-gray-400">
-                Here's your progress at a glance.
-              </p>
+          ) : (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white font-black text-2xl flex items-center justify-center shadow-md shrink-0">
+              {initial}
+            </div>
+          )}
+          <div>
+            <span className="text-xs uppercase font-extrabold tracking-wider text-purple-600 dark:text-fuchsia-400">
+              {dashUser.role || 'Official Progress Candidate'}
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5">
+              {user?.fullName || dashUser.fullName}
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-violet-300/80 mt-0.5 font-medium">
+              {user?.email || dashUser.email}
+            </p>
+
+            <div className="flex items-center justify-center sm:justify-start gap-3 mt-3">
+              <div className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/20 text-center">
+                <span className="text-xs font-black text-orange-600 dark:text-orange-400 inline-flex items-center gap-1">
+                  <Flame size={14} /> {dashUser.dailyStreak} Days Streak
+                </span>
+              </div>
+              <div className="px-3.5 py-1.5 rounded-xl bg-purple-500/15 border border-purple-500/20 text-center">
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
+                  <Star size={14} /> {dashUser.points} Points
+                </span>
+              </div>
             </div>
           </div>
-          <ProductivityScore
-            score={dashUser.productivityScore}
-            subtitle={`${dashUser.points} pts · ${dashUser.dailyStreak}-day streak`}
-          >
-            <div className="text-xs uppercase tracking-wider text-gray-400">
-              Productivity
-            </div>
-            <div className="text-sm text-gray-300">
-              Keep stacking task completions.
-            </div>
-          </ProductivityScore>
         </div>
-      </DashboardCard>
 
-      {/* ─── Top targets + pending tasks ─────────────────────────── */}
+        <div className="flex items-center gap-4 bg-white/70 dark:bg-white/[0.03] p-4 rounded-2xl border border-purple-200/60 dark:border-white/10 shadow-sm shrink-0">
+          <ProgressScore
+            score={progressScoreVal}
+            subtitle={`${dashUser.points} pts earned`}
+          >
+            <div className="text-xs font-black uppercase tracking-wider text-purple-700 dark:text-fuchsia-400 flex items-center gap-1">
+              <Zap size={14} /> Progress Score
+            </div>
+            <div className="text-xs text-slate-600 dark:text-violet-200 mt-0.5 font-medium">
+              {progressScoreVal >= 80 ? 'Mastery Pace' : progressScoreVal >= 50 ? 'Steady Growth' : 'Getting Started'}
+            </div>
+          </ProgressScore>
+        </div>
+      </div>
+
+      {/* ─── Top targets + Recent tasks ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard
-          title="Top targets"
-          subtitle="Active targets — progress is based on sub-task completion."
+          title="Active Targets"
+          subtitle="Key milestones & sub-task progress."
           action={
             <Link
               to="/dashboard/targets"
-              className="text-xs font-semibold text-purple-300 hover:text-purple-200 transition"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
             >
               View all →
             </Link>
@@ -144,68 +180,88 @@ export function DashboardHomePage() {
         </DashboardCard>
 
         <DashboardCard
-          title="Pending tasks"
-          subtitle="Quick wins — tick to complete (+2 pts each)."
+          title="Recent Tasks"
+          subtitle="Recent standalone and target sub-tasks."
           action={
             <Link
               to="/dashboard/tasks"
-              className="text-xs font-semibold text-purple-300 hover:text-purple-200 transition"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
             >
-              View all →
+              View all tasks →
             </Link>
           }
         >
           {pendingTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">
-              No pending tasks. Nice work!
+            <p className="text-sm text-slate-500 dark:text-violet-300/70 italic py-4">
+              No tasks found. Create a task in the Tasks section!
             </p>
           ) : (
             <ul className="space-y-2">
-              {pendingTasks.map((t) => {
+              {pendingTasks.map((t: Task) => {
                 const strikethrough = strikeOverrides[t.id] ?? t.isCompleted;
                 const busy = pendingToggles.has(t.id);
                 return (
                   <li
                     key={t.id}
-                    className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/5 transition"
+                    className={`flex items-center justify-between gap-3 rounded-xl p-2.5 border transition ${
+                      strikethrough
+                        ? 'bg-slate-100/50 dark:bg-white/[0.01] border-slate-200 dark:border-white/5 opacity-70'
+                        : 'bg-slate-50/80 dark:bg-white/[0.02] border-purple-200/50 dark:border-white/5 hover:border-purple-400/50'
+                    }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleToggle(t)}
-                      disabled={busy}
-                      aria-label={
-                        strikethrough ? 'Mark as not done' : 'Mark as done'
-                      }
-                      className={
-                        'h-5 w-5 shrink-0 rounded-full border-2 grid place-items-center ' +
-                        'transition-all ' +
-                        (strikethrough
-                          ? 'bg-emerald-500 border-emerald-400'
-                          : 'border-white/30 hover:border-emerald-400') +
-                        (busy ? ' opacity-50' : '')
-                      }
-                    >
-                      {strikethrough && (
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={3}
-                          className="h-3 w-3 text-white"
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => handleToggle(t)}
+                        disabled={busy}
+                        aria-label={strikethrough ? 'Mark as not done' : 'Mark as done'}
+                        className={
+                          'h-5 w-5 shrink-0 rounded-full border-2 grid place-items-center transition-all cursor-pointer ' +
+                          (strikethrough
+                            ? 'bg-emerald-500 border-emerald-400'
+                            : 'border-slate-400 dark:border-white/30 hover:border-emerald-400') +
+                          (busy ? ' opacity-50' : '')
+                        }
+                      >
+                        {strikethrough && (
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                            className="h-3 w-3 text-white"
+                          >
+                            <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </button>
+                      <div className="min-w-0">
+                        <span
+                          className={
+                            'truncate text-sm font-medium block ' +
+                            (strikethrough
+                              ? 'line-through text-slate-400 dark:text-violet-400/50'
+                              : 'text-slate-900 dark:text-white')
+                          }
                         >
-                          <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </button>
+                          {t.title}
+                        </span>
+                        {t.target && (
+                          <span className="text-[10px] font-bold text-purple-600 dark:text-fuchsia-400 truncate block">
+                            Target: {t.target.title}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
                     <span
-                      className={
-                        'truncate text-sm ' +
-                        (strikethrough
-                          ? 'line-through text-gray-500'
-                          : 'text-gray-100')
-                      }
+                      className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 border ${
+                        strikethrough
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                      }`}
                     >
-                      {t.title}
+                      {strikethrough ? 'Completed' : 'Pending'}
                     </span>
                   </li>
                 );
@@ -213,45 +269,48 @@ export function DashboardHomePage() {
             </ul>
           )}
           {toggleError && (
-            <p className="text-xs text-rose-400 mt-2">{toggleError}</p>
+            <p className="text-xs text-rose-500 mt-2">{toggleError}</p>
           )}
         </DashboardCard>
       </div>
 
-      {/* ─── Reminders + Projects strip ─────────────────────────── */}
+      {/* ─── Reminders + GitHub Projects strip ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <DashboardCard
-          title="Upcoming reminders"
+          title="Upcoming Reminders"
+          subtitle="Scheduled target & task alerts."
           action={
             <Link
               to="/dashboard/reminders"
-              className="text-xs font-semibold text-purple-300 hover:text-purple-200 transition"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
             >
-              View all →
+              Manage Reminders →
             </Link>
           }
         >
           {upcomingReminders.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">
-              No reminders scheduled. Set one from a target or task.
+            <p className="text-sm text-slate-500 dark:text-violet-300/70 italic py-2">
+              No pending reminders scheduled.
             </p>
           ) : (
             <ul className="space-y-2">
-              {upcomingReminders.map((r) => (
+              {upcomingReminders.map((r: any) => (
                 <li
                   key={r.id}
-                  className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-white/5 transition"
+                  className="flex items-center justify-between gap-3 rounded-xl p-2.5 bg-slate-50/80 dark:bg-white/[0.02] border border-purple-200/50 dark:border-white/5"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-100 truncate">
-                      {r.target?.title ?? r.task?.title ?? 'Reminder'}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500">
-                      {r.targetId ? 'Target' : 'Task'}
-                    </p>
-                  </div>
-                  <div className="text-xs text-gray-400 shrink-0">
-                    {new Date(r.time).toLocaleString()}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/15 text-purple-700 dark:text-fuchsia-400 flex items-center justify-center shrink-0">
+                      <Bell size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                        {r.target?.title ?? r.task?.title ?? 'Reminder'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-violet-300/70 flex items-center gap-1">
+                        <Clock size={11} /> {new Date(r.time).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -260,86 +319,146 @@ export function DashboardHomePage() {
         </DashboardCard>
 
         <DashboardCard
-          title="Projects"
-          subtitle="GitHub repos ship in Phase 8."
+          title="GitHub Integration"
+          subtitle="Real-time repositories and contributions."
           action={
             <Link
               to="/dashboard/projects"
-              className="text-xs font-semibold text-purple-300 hover:text-purple-200 transition"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
             >
-              View all →
+              {projects.githubConnected ? 'View Projects →' : 'Connect GitHub →'}
             </Link>
           }
         >
-          <div className="grid grid-cols-2 gap-3">
-            <ProjectStat
-              label="Connected"
-              value={projects.githubConnected ? 'Yes' : 'Not yet'}
-              tone={projects.githubConnected ? 'emerald' : 'slate'}
-            />
-            <ProjectStat
-              label="Repositories"
-              value={projects.repoCount}
-              tone="purple"
-            />
+          <div className="flex items-center justify-between p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-md">
+                <GithubIcon size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  {projects.githubConnected ? `@${projects.username}` : 'GitHub Not Connected'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-violet-300/70">
+                  {projects.githubConnected ? 'Live sync & contribution tracking active' : 'Connect to track repos & commits'}
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/dashboard/projects"
+              className="px-3.5 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-bold shadow hover:bg-purple-500 transition"
+            >
+              {projects.githubConnected ? 'Explore' : 'Connect'}
+            </Link>
           </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Connect your GitHub account to see repos + the 365-day contribution
-            grid here.
-          </p>
         </DashboardCard>
       </div>
 
-      {/* ─── Streak + contribution grid ─────────────────────────── */}
-      <DashboardCard
-        title={`${activeDays} ${activeDays === 1 ? 'Day' : 'Days'} Active in last year`}
-        subtitle="Each cell counts the tasks you completed on that UTC day."
-      >
-        <ContributionGrid
-          cells={contributionGrid.cells}
-        />
-      </DashboardCard>
-    </div>
-  );
-}
+      {/* ─── Courses & Notes Overview strip ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Courses */}
+        <DashboardCard
+          title="Enrolled Courses"
+          subtitle="Semester tracks and learning materials."
+          action={
+            <Link
+              to="/dashboard/courses"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
+            >
+              All Courses →
+            </Link>
+          }
+        >
+          {recentCourses.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-violet-300/70 italic py-2">
+              No courses added yet. Add your curriculum courses to track them.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {recentCourses.map((c: any) => (
+                <li
+                  key={c.id}
+                  className="flex items-center justify-between gap-3 rounded-xl p-2.5 bg-slate-50/80 dark:bg-white/[0.02] border border-purple-200/50 dark:border-white/5"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <GraduationCap size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{c.title}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-violet-300/70 font-semibold">{c.semester || 'Course'}</p>
+                    </div>
+                  </div>
+                  {c.resourceLink && (
+                    <a
+                      href={c.resourceLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 rounded-lg text-purple-600 dark:text-fuchsia-400 hover:bg-purple-500/10 transition"
+                      title="Open Resource"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DashboardCard>
 
-/* ────────────────────────── Sub-components ────────────────────────── */
-
-function Avatar({ name, avatar }: { name: string; avatar: string | null }) {
-  const initial = (name || '?').trim().charAt(0).toUpperCase();
-  return (
-    <div className="h-14 w-14 rounded-2xl overflow-hidden ring-2 ring-white/10 shrink-0">
-      {avatar ? (
-        <img src={avatar} alt={name} className="h-full w-full object-cover" />
-      ) : (
-        <div className="h-full w-full grid place-items-center bg-gradient-to-tr from-purple-700 via-indigo-600 to-pink-500 text-white text-xl font-black">
-          {initial}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProjectStat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number | string;
-  tone: 'emerald' | 'purple' | 'slate';
-}) {
-  const tones = {
-    emerald: 'from-emerald-500/20 to-teal-500/10 text-emerald-300 ring-emerald-400/30',
-    purple: 'from-purple-500/20 to-fuchsia-500/10 text-purple-300 ring-purple-400/30',
-    slate: 'from-slate-500/20 to-slate-700/10 text-slate-200 ring-slate-400/30',
-  } as const;
-  return (
-    <div className={`rounded-xl p-3 ring-1 bg-gradient-to-br ${tones[tone]}`}>
-      <div className="text-[10px] uppercase tracking-wider opacity-80">
-        {label}
+        {/* Recent Notes */}
+        <DashboardCard
+          title="Recent Study Notes"
+          subtitle="Quick notes, code snippets and guides."
+          action={
+            <Link
+              to="/dashboard/notes"
+              className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline transition"
+            >
+              All Notes →
+            </Link>
+          }
+        >
+          {recentNotes.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-violet-300/70 italic py-2">
+              No notes saved yet. Capture thoughts in the Notes section.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {recentNotes.map((n: any) => (
+                <li
+                  key={n.id}
+                  className="flex items-center justify-between gap-3 rounded-xl p-2.5 bg-slate-50/80 dark:bg-white/[0.02] border border-purple-200/50 dark:border-white/5"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-400 flex items-center justify-center shrink-0">
+                      <BookOpen size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{n.title}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-violet-300/70 truncate">{n.content?.slice(0, 40) || 'Study note'}</p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/dashboard/notes"
+                    className="text-xs font-bold text-purple-600 dark:text-fuchsia-400 hover:underline shrink-0"
+                  >
+                    Read →
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </DashboardCard>
       </div>
-      <div className="mt-1 text-lg font-extrabold tabular-nums">{value}</div>
+
+      {/* ─── Realtime Streak + Centered Activity Calendar ─────────────────────────── */}
+      <DashboardCard
+        title={`Daily Streak & Activity Calendar (${activeDays} ${activeDays === 1 ? 'Day' : 'Days'} Active)`}
+        subtitle="Real-time 365-day task completions and streak consistency."
+      >
+        <ContributionGrid cells={contributionGrid.cells} />
+      </DashboardCard>
     </div>
   );
 }
@@ -350,7 +469,7 @@ function DashboardSkeleton() {
       {[1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-32 rounded-2xl bg-white/5 animate-pulse"
+          className="h-32 rounded-2xl bg-slate-200/60 dark:bg-white/5 animate-pulse"
           aria-label="Loading"
         />
       ))}

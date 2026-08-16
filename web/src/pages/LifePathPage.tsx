@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Compass, CheckCircle2, Clock, Flag, Target as TargetIcon, Edit3, Save, Loader2 } from 'lucide-react';
+import { Compass, CheckCircle2, Clock, Flag, Target as TargetIcon, Edit3, Save, Loader2, Calendar, Plus } from 'lucide-react';
 import { api } from '../lib/api';
+import { useFutureGoal } from '../modules/futureGoal/useFutureGoal';
+import { useToast } from '../context/ToastContext';
 
 export function LifePathPage() {
-  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const { goal, loading: futureGoalLoading, save: saveGoal } = useFutureGoal();
   const [editingFutureGoal, setEditingFutureGoal] = useState(false);
   const [futureGoalTitle, setFutureGoalTitle] = useState('');
+  const [savingGoal, setSavingGoal] = useState(false);
 
-  // Fetch targets & future goal
+  // Fetch targets
   const { data: targetsData, isLoading: targetsLoading } = useQuery({
     queryKey: ['targets'],
     queryFn: async () => {
@@ -18,34 +22,37 @@ export function LifePathPage() {
     },
   });
 
-  const { data: futureGoalData, isLoading: futureGoalLoading } = useQuery({
-    queryKey: ['futureGoal'],
-    queryFn: async () => {
-      const { data } = await api.get('/api/future-goal');
-      return data.futureGoal || { title: 'My Ultimate Career & Life Milestone' };
-    },
-  });
-
-  const futureGoalMutation = useMutation({
-    mutationFn: async (title: string) => {
-      const { data } = await api.post('/api/future-goal', { title });
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['futureGoal'] });
-      setEditingFutureGoal(false);
-    },
-  });
-
-  const handleFutureGoalSubmit = (e: React.FormEvent) => {
+  const handleFutureGoalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!futureGoalTitle.trim()) return;
-    futureGoalMutation.mutate(futureGoalTitle.trim());
+    try {
+      setSavingGoal(true);
+      await saveGoal(futureGoalTitle.trim());
+      setEditingFutureGoal(false);
+      addToast({
+        type: 'success',
+        title: 'Future Goal Updated',
+        message: 'Your ultimate milestone has been saved and synced.',
+      });
+    } catch {
+      addToast({
+        type: 'warning',
+        title: 'Save Failed',
+        message: 'Could not update future goal.',
+      });
+    } finally {
+      setSavingGoal(false);
+    }
   };
 
-  const targets = targetsData ?? [];
-  const futureGoal = futureGoalData;
+  // Chronological order: Oldest target first, then recent ones follow
+  const rawTargets = targetsData ?? [];
+  const targets = [...rawTargets].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
 
+  const futureGoal = goal;
+  const hasFutureGoal = !!futureGoal?.title?.trim();
   const isLoading = targetsLoading || futureGoalLoading;
 
   return (
@@ -57,7 +64,7 @@ export function LifePathPage() {
             <Compass className="text-purple-600 dark:text-fuchsia-400" size={26} /> Life Path & Milestones
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-violet-300/80 mt-1">
-            Vertical journey timeline mapping your target progression to your ultimate Future Goal.
+            Chronological journey: Target #1 (Oldest) &rarr; Next Targets &rarr; Ultimate Milestone.
           </p>
         </div>
       </div>
@@ -80,8 +87,8 @@ export function LifePathPage() {
             {targets.length === 0 ? (
               <div className="text-center py-8 bg-slate-50/60 dark:bg-cardBg/40 rounded-2xl border border-dashed border-purple-300 dark:border-purple-500/30 p-6">
                 <TargetIcon className="mx-auto text-purple-400 mb-2" size={32} />
-                <p className="text-sm font-semibold text-slate-700 dark:text-white">No active targets set in Target Feature yet.</p>
-                <p className="text-xs text-slate-500 dark:text-violet-300/70 mt-1">Add targets in the Target section to see them automatically line up on your Life Path.</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-white">No active targets set yet.</p>
+                <p className="text-xs text-slate-500 dark:text-violet-300/70 mt-1">Add targets in the Target section to see them automatically line up on your chronological Life Path.</p>
               </div>
             ) : (
               targets.map((target: any, index: number) => {
@@ -103,7 +110,7 @@ export function LifePathPage() {
                       <div className="rounded-2xl border border-purple-200/80 dark:border-cardBorder bg-gradient-to-br from-slate-50/95 via-indigo-50/70 to-purple-50/60 dark:from-[#160e2e]/90 dark:to-[#0c071a]/95 p-5 shadow-md hover:shadow-lg transition">
                         <div className="flex items-center justify-between gap-2 mb-2">
                           <span className="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-fuchsia-400">
-                            Target {index + 1}
+                            Target #{index + 1}
                           </span>
                           <span
                             className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
@@ -141,11 +148,9 @@ export function LifePathPage() {
                             )}
                           </span>
 
-                          {target.deadline && (
-                            <span className="text-slate-500 dark:text-violet-300/60">
-                              Deadline: {new Date(target.deadline).toLocaleDateString()}
-                            </span>
-                          )}
+                          <span className="text-slate-500 dark:text-violet-300/60 flex items-center gap-1">
+                            <Calendar size={11} /> {new Date(target.createdAt).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -170,7 +175,7 @@ export function LifePathPage() {
               })
             )}
 
-            {/* End Milestone: Ultimate Future Goal Card */}
+            {/* End Milestone: Ultimate Milestone Card */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -191,25 +196,49 @@ export function LifePathPage() {
 
                 {!editingFutureGoal ? (
                   <div>
-                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                      {futureGoal?.title || 'My Ultimate Career & Life Milestone'}
-                    </h2>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFutureGoalTitle(futureGoal?.title || '');
-                        setEditingFutureGoal(true);
-                      }}
-                      className="mt-4 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold tracking-wide transition inline-flex items-center gap-1.5 border border-white/20"
-                    >
-                      <Edit3 size={14} /> Edit Future Goal
-                    </button>
+                    {hasFutureGoal && futureGoal ? (
+                      <>
+                        <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                          {futureGoal.title}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFutureGoalTitle(futureGoal.title);
+                            setEditingFutureGoal(true);
+                          }}
+                          className="mt-4 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold tracking-wide transition inline-flex items-center gap-1.5 border border-white/20"
+                        >
+                          <Edit3 size={14} /> Edit Future Goal
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-xl sm:text-2xl font-bold text-violet-200/90 tracking-tight">
+                          No Future Goal Set in Target Feature
+                        </h2>
+                        <p className="text-xs text-violet-300/70 mt-1 max-w-sm mx-auto">
+                          Set your high-level ultimate goal below or in the Target section.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFutureGoalTitle('');
+                            setEditingFutureGoal(true);
+                          }}
+                          className="mt-4 px-5 py-2.5 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white text-xs font-bold tracking-wide transition inline-flex items-center gap-1.5 shadow-md"
+                        >
+                          <Plus size={14} /> Set Future Goal
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <form onSubmit={handleFutureGoalSubmit} className="max-w-md mx-auto space-y-3">
                     <input
                       type="text"
                       required
+                      autoFocus
                       value={futureGoalTitle}
                       onChange={(e) => setFutureGoalTitle(e.target.value)}
                       placeholder="e.g. Become a Senior Software Engineer & Build My Product"
@@ -225,10 +254,10 @@ export function LifePathPage() {
                       </button>
                       <button
                         type="submit"
-                        disabled={futureGoalMutation.isPending || !futureGoalTitle.trim()}
+                        disabled={savingGoal || !futureGoalTitle.trim()}
                         className="px-5 py-1.5 rounded-lg bg-fuchsia-600 text-white text-xs font-bold hover:bg-fuchsia-500 disabled:opacity-50 inline-flex items-center gap-1.5"
                       >
-                        {futureGoalMutation.isPending && <Loader2 size={14} className="animate-spin" />}
+                        {savingGoal && <Loader2 size={14} className="animate-spin" />}
                         <Save size={14} /> Save Goal
                       </button>
                     </div>

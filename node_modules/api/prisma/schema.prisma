@@ -70,6 +70,10 @@ model User {
   dailyStreak          Int           @default(0)
   lastTaskCompleteDate DateTime?
   theme                String        @default("light") // "light" | "dark"
+  timezone             String        @default("UTC")
+  pushNotifications    Boolean       @default(true)
+  emailNotifications   Boolean       @default(true)
+  reminderSound        Boolean       @default(true)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 

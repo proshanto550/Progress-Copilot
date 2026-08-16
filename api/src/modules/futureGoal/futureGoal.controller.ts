@@ -16,12 +16,12 @@ function userId(req: Request): string {
 export const get = asyncHandler(async (req, res) => {
   const id = userId(req);
   const goal = await service.getFutureGoal(id);
-  res.json({ goal });
+  res.json({ goal, futureGoal: goal });
 });
 
 export const put = asyncHandler(async (req, res) => {
   const id = userId(req);
   const data = futureGoalSchema.parse(req.body);
   const goal = await service.upsertFutureGoal(id, data);
-  res.json({ goal });
+  res.json({ goal, futureGoal: goal });
 });

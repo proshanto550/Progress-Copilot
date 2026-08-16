@@ -1,4 +1,3 @@
-import { DashboardPlaceholder } from '../components/layout/DashboardPlaceholder';
 import { MyProgressScreen } from './MyProgressScreen';
 import { AIAssistantPage as RealAIAssistantPage } from './AIAssistantPage';
 import { default as RealProfilePage } from './ProfilePage';
@@ -8,6 +7,7 @@ import { ProjectsPage as RealProjectsPage } from './ProjectsPage';
 import { LifePathPage as RealLifePathPage } from './LifePathPage';
 import { ReportsPage as RealReportsPage } from './ReportsPage';
 import { RemindersPage as RealRemindersPage } from './RemindersPage';
+import { SettingsPage as RealSettingsPage } from './SettingsPage';
 
 /**
  * DashboardPlaceholderPage — the public re-export module for routes.
@@ -22,12 +22,4 @@ export { RealProjectsPage as ProjectsPage };
 export { RealLifePathPage as LifePathPage };
 export { RealReportsPage as ReportsPage };
 export { RealRemindersPage as RemindersPage };
-
-export function SettingsPage() {
-  return (
-    <DashboardPlaceholder
-      title="Settings"
-      subtitle="Profile, theme, notifications, account."
-    />
-  );
-}
+export { RealSettingsPage as SettingsPage };
