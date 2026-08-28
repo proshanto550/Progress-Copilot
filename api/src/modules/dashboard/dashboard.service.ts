@@ -17,7 +17,7 @@ function isoDate(d: Date): string {
   return startOfUTCDay(d).toISOString().slice(0, 10);
 }
 
-function calculateProgressScore(
+export function calculateProgressScore(
   completedTargets: number,
   totalTargets: number,
   completedTasks: number,
@@ -28,8 +28,71 @@ function calculateProgressScore(
   const targetScore = totalTargets > 0 ? (completedTargets / totalTargets) * 40 : 20;
   const taskScore = totalTasks > 0 ? (completedTasks / totalTasks) * 35 : 15;
   const streakScore = Math.min(streak * 5, 25);
-  const total = Math.round(targetScore + taskScore + streakScore);
-  return Math.min(100, Math.max(0, total));
+  return Math.min(100, Math.max(0, Math.round(targetScore + taskScore + streakScore)));
+}
+
+export type ProductivityBreakdown = {
+  completionScore: number; // max 50
+  priorityScore: number; // max 30
+  consistencyScore: number; // max 20
+  totalTasks: number;
+  completedTasks: number;
+  completionRate: number; // 0-100%
+  highPriorityTotal: number;
+  highPriorityCompleted: number;
+  highPriorityRate: number; // 0-100%
+  dailyStreak: number;
+};
+
+export function calculateProductivityScore(
+  tasks: { isCompleted: boolean; priority: string }[],
+  streak: number,
+): { productivityScore: number; scoreBreakdown: ProductivityBreakdown } {
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.isCompleted).length;
+
+  // 1. Completion Rate (50% weight, max 50 pts)
+  const completionRate = totalTasks > 0 ? completedTasks / totalTasks : 1;
+  const completionScore = Math.min(50, Math.round(completionRate * 50));
+
+  // 2. Priority Focus (30% weight, max 30 pts)
+  const highTasks = tasks.filter((t) => t.priority === 'HIGH');
+  const highTotal = highTasks.length;
+  const highCompleted = highTasks.filter((t) => t.isCompleted).length;
+
+  let priorityRate = 1;
+  let priorityScore = 30;
+
+  if (highTotal > 0) {
+    priorityRate = highCompleted / highTotal;
+    priorityScore = Math.min(30, Math.round(priorityRate * 30));
+  } else if (totalTasks > 0) {
+    priorityRate = completionRate;
+    priorityScore = Math.min(30, Math.round(completionRate * 30));
+  }
+
+  // 3. Consistency (20% weight, max 20 pts)
+  const consistencyScore = Math.min(20, Math.round((streak / 7) * 20));
+
+  const totalScore = Math.min(100, Math.max(0, completionScore + priorityScore + consistencyScore));
+
+  const scoreBreakdown: ProductivityBreakdown = {
+    completionScore,
+    priorityScore,
+    consistencyScore,
+    totalTasks,
+    completedTasks,
+    completionRate: Math.round(completionRate * 100),
+    highPriorityTotal: highTotal,
+    highPriorityCompleted: highCompleted,
+    highPriorityRate: Math.round(priorityRate * 100),
+    dailyStreak: streak,
+  };
+
+  return {
+    productivityScore: totalScore,
+    scoreBreakdown,
+  };
 }
 
 /* ───────────────────────────── /api/dashboard ───────────────────────────── */
@@ -67,9 +130,10 @@ export async function getDashboard(userId: string) {
   // Show incomplete tasks first. If fewer than 4 incomplete, backfill with completed tasks
   const allUserTasks = await prisma.task.findMany({
     where: { userId },
-    select: { id: true, isCompleted: true },
+    select: { id: true, isCompleted: true, priority: true },
   });
   const completedTasksCount = allUserTasks.filter((t) => t.isCompleted).length;
+  void completedTasksCount;
 
   const incompleteTasks = await prisma.task.findMany({
     where: { userId, isCompleted: false },
@@ -130,6 +194,9 @@ export async function getDashboard(userId: string) {
     take: 3,
   });
 
+  const coursesCount = await prisma.course.count({ where: { userId } });
+  const completedCoursesCount = await prisma.course.count({ where: { userId, isCompleted: true } });
+
   // ── 6. 365-day contribution grid (realtime sync with completed tasks + streak)
   const since = startOfUTCDay(
     new Date(now.getTime() - (CONTRIBUTION_DAYS - 1) * DAY_MS),
@@ -173,11 +240,17 @@ export async function getDashboard(userId: string) {
     user.dailyStreak,
   );
 
+  const { productivityScore, scoreBreakdown } = calculateProductivityScore(
+    allUserTasks,
+    user.dailyStreak,
+  );
+
   return {
     user: {
       ...user,
-      productivityScore: progressScoreVal,
       progressScore: progressScoreVal,
+      productivityScore,
+      scoreBreakdown,
     },
     topTargets,
     pendingTasks: dashboardTasks,
@@ -185,6 +258,8 @@ export async function getDashboard(userId: string) {
     projects,
     recentNotes,
     recentCourses,
+    coursesCount,
+    completedCoursesCount,
     contributionGrid: {
       days: CONTRIBUTION_DAYS,
       cells,
@@ -273,11 +348,17 @@ export async function getProgress(userId: string) {
     user.dailyStreak,
   );
 
+  const { productivityScore, scoreBreakdown } = calculateProductivityScore(
+    allUserTasks,
+    user.dailyStreak,
+  );
+
   return {
     user: {
       ...user,
-      productivityScore: progressScoreVal,
       progressScore: progressScoreVal,
+      productivityScore,
+      scoreBreakdown,
     },
     targetBreakdown,
     tasksCompletedLast30Days,
