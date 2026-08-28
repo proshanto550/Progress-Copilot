@@ -15,8 +15,5 @@
     "build": "npx prisma generate --schema=api/prisma/schema.prisma && npm run build:web",
     "prisma:generate": "npm --workspace api run prisma:generate",
     "prisma:migrate": "npm --workspace api run prisma:migrate"
-  },
-  "dependencies": {
-    "@prisma/client": "5.22.0"
   }
 }
